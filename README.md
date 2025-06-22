@@ -87,8 +87,14 @@ sigmadft -i timeline.csv -o results.json -t authentication-activity
 | `session-opened` | Session login events |
 | `authentication-activity` | All authentication events |
 | `web-shell` | Web shell detection |
+| `security-tools` | Security tools disabling syslog |
+| `suspicious-dns` | Suspicious DNS activities |
+| `crontab-modification` | Crontab file modifications |
+| `ftp-errors` | VSFTPD suspicious error messages |
+| `suspicious-logs` | Suspicious shell log entries |
 | `all-linux-security` | All Linux security events |
 | `all` | All available rules |
+
 
 ### Example Analysis
 
