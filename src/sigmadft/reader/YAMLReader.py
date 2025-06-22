@@ -1,4 +1,4 @@
-# /reader/YAMLReader.py
+# src/sigmadft//reader/YAMLReader.py
 
 import yaml
 from sigmadft.rules.Rule import Rule

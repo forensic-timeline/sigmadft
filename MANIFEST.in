@@ -1,0 +1,9 @@
+# MANIFEST.in - Include additional files in the package
+
+include README.md
+include LICENSE
+include pyproject.toml
+recursive-include src/sigmadft/rules *.yml *.yaml
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+global-exclude .DS_Store

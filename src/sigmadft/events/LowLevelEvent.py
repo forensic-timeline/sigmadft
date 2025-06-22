@@ -1,4 +1,4 @@
-# /events/HighLevelEvent.py
+# src/sigmadft/events/LowLevelEvent.py
 
 import re
 from typing import  Optional, Dict

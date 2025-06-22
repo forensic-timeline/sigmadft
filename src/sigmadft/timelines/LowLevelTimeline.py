@@ -1,4 +1,4 @@
-# /timelines/HighLevelTimeline.py
+# src/sigmadft/timelines/HighLevelTimeline.py
 
 import re
 from datetime import datetime

@@ -1,4 +1,4 @@
-# /events/HighLevelEvent.py
+# src/sigmadft/events/HighLevelEvent.py
 
 from typing import Any, Optional, List, Dict
 from sigmadft.events.BaseEvent import BaseEvent

@@ -1,4 +1,4 @@
-# /events/BaseEvent.py
+# src/sigmadft/events/BaseEvent.py
 
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod

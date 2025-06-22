@@ -1,4 +1,4 @@
-# analyzers/ReadFromYamlAnalyzer.py
+# src/sigmadft/analyzers/ReadFromYamlAnalyzer.py
 
 __author__ = ['Java Kanaya Prada']
 

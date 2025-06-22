@@ -1,0 +1,275 @@
+# .gitignore for SigmaDFT - Digital Forensics Timeline Analysis
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+sigmadft-env/
+sigmadft-venv/
+
+# Conda environments
+.conda/
+conda-bld/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff (if you ever add web interface)
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff (if you ever add web interface)
+instance/
+.webassets-cache
+
+# Scrapy stuff
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# IDE specific files
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+*.lnk
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.exe
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Project specific files
+# Sample data files (you might want to keep some as examples)
+*.csv
+sample_data/
+test_data/
+data/
+
+# Output files
+results/
+output/
+*.json
+*.xml
+analysis_results/
+
+# Temporary files
+temp/
+tmp/
+*.backup
+*.bak
+
+# Log files
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration files with sensitive data
+config.ini
+settings.ini
+.env.local
+.env.production
+secrets.yaml
+credentials.json
+
+# Forensic tool specific files
+*.e01
+*.dd
+*.001
+*.raw
+*.vmdk
+*.vhd
+*.img
+
+# Large timeline files
+*_timeline.csv
+plaso_output/
+timeline_data/
+
+# Documentation build
+docs/build/
+docs/_build/
+
+# Package build artifacts
+wheelhouse/
+
+# Backup files
+*.orig
+*.rej
+
+# Editor temporary files
+.#*
+*#
+.*.sw[a-z]
+*.un~
+Session.vim
+
+# OS generated files
+.directory
+.fuse_hidden*
+.Trash-*
+.nfs*
+
+# Exclude sample forensic data but keep example rules
+# (Uncomment these if you want to include sample data)
+# !sample_data/small_example.csv
+# !test_data/example_timeline.csv
+
+# Keep important example files
+!rules/examples/
+!docs/examples/

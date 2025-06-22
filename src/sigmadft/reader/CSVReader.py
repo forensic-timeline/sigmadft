@@ -1,4 +1,4 @@
-# /readers/CSVReader.py
+# src/sigmadft//readers/CSVReader.py
 
 import csv
 

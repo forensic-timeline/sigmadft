@@ -1,4 +1,4 @@
-# /output/JSONWriter.py
+# src/sigmadft//output/JSONWriter.py
 
 import json
 from sigmadft.timelines.HighLevelTimeline import HighLevelTimeline

@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sigmadft"
+version = "1.0.0"
+authors = [
+    {name = "Java Kanaya Prada", email = "javakanaya@gmail.com"},
+]
+description = "Digital Forensics Timeline Analysis using Sigma-like rules"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology", 
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Forensics",
+]
+keywords = ["forensics", "timeline", "sigma", "detection", "security"]
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/forensic-timeline/sigmadft"
+Repository = "https://github.com/forensic-timeline/sigmadft" 
+Documentation = "https://github.com/forensic-timeline/sigmadft/blob/main/README.md"
+"Bug Tracker" = "https://github.com/forensic-timeline/sigmadft/issues"
+
+[project.scripts]
+sigmadft = "sigmadft.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=22.0", 
+    "mypy>=1.0",
+    "flake8>=4.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sigmadft = ["rules/**/*.yml", "rules/**/*.yaml"]
+
+# Development tool configurations
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

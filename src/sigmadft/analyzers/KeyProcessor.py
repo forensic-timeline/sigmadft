@@ -1,4 +1,4 @@
-# analyzers/KeyProcessor.py
+# src/sigmadft/analyzers/KeyProcessor.py
 
 from typing import Any
 from sigmadft.events.LowLevelEvent import LowLevelEvent
