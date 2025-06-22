@@ -1,4 +1,4 @@
-# main.py
+# src/sigmadft/main.py
 
 import argparse
 import os
@@ -28,13 +28,6 @@ def format_duration(seconds):
 
 # Main function
 def main():
-    # Start timing the entire process
-    total_start_time = time.time()
-    start_datetime = datetime.now()
-
-    print(f"[{start_datetime.strftime('%Y-%m-%d %H:%M:%S')}] Starting analysis...")
-    print("=" * 60)
-
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Forensic event reconstruction tool.")
     parser.add_argument(
@@ -67,6 +60,13 @@ def main():
     input_path = args.input_path
     output_path = args.output_path
     event_type = args.type
+    
+    # Start timing the entire process
+    total_start_time = time.time()
+    start_datetime = datetime.now()
+
+    print(f"[{start_datetime.strftime('%Y-%m-%d %H:%M:%S')}] Starting analysis...")
+    print("=" * 60)
 
     # Read the CSV file
     csv_start_time = time.time()
