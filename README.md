@@ -1,6 +1,6 @@
 # SigmaDFT
 
-Digital Forensics Timeline Analysis using Sigma-like rules for event reconstruction and threat hunting.
+Digital Forensics Timeline Analysis using Sigma-like rules for event reconstruction.
 
 ## Description
 
