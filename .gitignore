@@ -45,7 +45,6 @@ src/sigmadft/rules/*
 !src/sigmadft/rules/__init__.py
 
 # ===== File lokal =====
-/__init__.py
 /CLAUDE.md
 /note.txt
 .claude/
