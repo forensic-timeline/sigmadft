@@ -25,8 +25,9 @@ class JSONWriter:
                 'plugin': event.plugin,
                 'files': event.files,
                 'keys': event.keys,
-                'supporting': event.supporting,
-                'trigger': event.trigger.to_dict() if event.trigger else None,
+                # Dinonaktifkan: 'supporting' dan 'trigger' tidak ditulis ke output
+                # 'supporting': event.supporting,
+                # 'trigger': event.trigger.to_dict() if event.trigger else None,
             }
         
         return timeline_dict

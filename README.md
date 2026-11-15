@@ -61,8 +61,11 @@ sigmadft -h
 ### Basic Commands
 
 ```bash
-# Basic timeline analysis
+# Basic timeline analysis (JSON output)
 sigmadft -i timeline.csv -o results.json
+
+# Basic timeline analysis (CSV output; format follows the -o extension: .json or .csv)
+sigmadft -i timeline.csv -o results.csv
 
 # Analyze specific event types
 sigmadft -i timeline.csv -o results.json -t google-search

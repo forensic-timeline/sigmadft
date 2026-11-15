@@ -4,6 +4,7 @@ import argparse
 import os
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import List
 import sigmadft.analyzers.ReadFromYamlAnalyzer as ReadFromYamlAnalyzer
 from sigmadft.reader.CSVReader import CSVReader
@@ -11,6 +12,7 @@ from sigmadft.reader.YAMLReader import YAMLReader
 from sigmadft.timelines.LowLevelTimeline import LowLevelTimeline
 from sigmadft.timelines.HighLevelTimeline import MergeHighLevelTimeline
 from sigmadft.output.JSONWriter import JSONWriter
+from sigmadft.output.CSVWriter import CSVWriter
 from sigmadft.rules.Rule import Rule
 
 
@@ -24,6 +26,25 @@ def format_duration(seconds):
         minutes = int(seconds // 60)
         remaining_seconds = seconds % 60
         return f"{minutes}m {remaining_seconds:.2f}s"
+
+
+def discover_rules(rules_dir: str) -> List[str]:
+    """Auto-discover all YAML rule files in the rules directory."""
+    rules = []
+    rules_path = Path(rules_dir)
+    
+    if not rules_path.exists():
+        return rules
+    
+    for yaml_file in rules_path.rglob("*.yml"):
+        relative_path = "/" + str(yaml_file.relative_to(rules_path))
+        rules.append(relative_path)
+    
+    for yaml_file in rules_path.rglob("*.yaml"):
+        relative_path = "/" + str(yaml_file.relative_to(rules_path))
+        rules.append(relative_path)
+    
+    return sorted(rules)
 
 
 # Main function
@@ -44,7 +65,7 @@ def main():
         action="store",
         required=True,
         type=str,
-        help="Output file path.",
+        help="Output file path. Format is chosen from the extension: .json or .csv.",
     )
     parser.add_argument(
         "-t",
@@ -60,7 +81,14 @@ def main():
     input_path = args.input_path
     output_path = args.output_path
     event_type = args.type
-    
+
+    # Determine output format from the output file extension
+    output_format = Path(output_path).suffix.lower().lstrip(".")
+    if output_format not in ("json", "csv"):
+        parser.error(
+            f"Unsupported output extension '{Path(output_path).suffix}'. Use .json or .csv."
+        )
+
     # Start timing the entire process
     total_start_time = time.time()
     start_datetime = datetime.now()
@@ -155,53 +183,11 @@ def main():
             "/linux/builtin/vsftpd/lnx_vsftpd_susp_error_messages.yml",
             "/linux/builtin/lnx_shell_susp_log_entries.yml",
         ],
-        # Default for running all available rules
-        "all": [
-            # Web browsing rules
-            "/web/google_search.yml",
-            "/web/bing_search.yml",
-            "/web/web_visit.yml",
-            "/web/youtube_watch.yml",
-            # Linux account management rules
-            "/linux/custom_susp/lnx_user_add.yml",
-            "/linux/custom_susp/lnx_user_mod.yml",
-            # Authentication rules
-            "/linux/custom_susp/lnx_auth_failure.yml",
-            "/linux/custom_susp/lnx_session_opened.yml",
-            # Web shell rule
-            "/linux/custom_susp/lnx_web_shell_detection.yml",
-            # System security rules
-            "/linux/builtin/syslog/lnx_syslog_security_tools_disabling_syslog.yml",
-            "/linux/builtin/syslog/lnx_syslog_susp_named.yml",
-            # Cron and scheduled task rules
-            "/linux/builtin/cron/lnx_cron_crontab_file_modification.yml",
-            # FTP and service rules
-            "/linux/builtin/vsftpd/lnx_vsftpd_susp_error_messages.yml",
-            # General suspicious activity rules
-            "/linux/builtin/lnx_shell_susp_log_entries.yml",
-        ],
     }
 
-    # Default rules - comprehensive set for general analysis
-    default_rules = [
-        # Core web activity rules
-        "/web/google_search.yml",
-        "/web/bing_search.yml",
-        "/web/web_visit.yml",
-        "/web/youtube_watch.yml",
-        # Core security rules
-        "/linux/custom_susp/lnx_user_add.yml",
-        "/linux/custom_susp/lnx_user_mod.yml",
-        "/linux/custom_susp/lnx_auth_failure.yml",
-        "/linux/custom_susp/lnx_session_opened.yml",
-        # Core system monitoring rules
-        "/linux/builtin/syslog/lnx_syslog_security_tools_disabling_syslog.yml",
-        "/linux/builtin/syslog/lnx_syslog_susp_named.yml",
-        "/linux/builtin/cron/lnx_cron_crontab_file_modification.yml",
-        "/linux/builtin/vsftpd/lnx_vsftpd_susp_error_messages.yml",
-        "/linux/builtin/lnx_shell_susp_log_entries.yml",
-        "/linux/custom_susp/lnx_web_shell_detection.yml",
-    ]
+    # Default rules - auto-discover all YAML files in rules directory
+    rules_dir = os.path.join(os.path.dirname(__file__), "rules")
+    default_rules = discover_rules(rules_dir)
 
     # Get rules based on event_type, or use default rules
     rules = event_analyzers.get(event_type, default_rules)
@@ -297,15 +283,19 @@ def main():
         f"  ✓ Timeline merging completed in {format_duration(merge_end_time - merge_start_time)}"
     )
 
-    # Write the results to a JSON file
+    # Write the results to a JSON or CSV file (based on output extension)
     output_start_time = time.time()
-    print(f"Writing results to JSON file: {output_path} ...")
+    format_label = output_format.upper()
+    print(f"Writing results to {format_label} file: {output_path} ...")
     print(f"Total events in merged timeline: {len(merged_high_timelines.events)}")
-    json_writer = JSONWriter(merged_high_timelines, output_path)
-    json_writer.write()
+    if output_format == "csv":
+        writer = CSVWriter(merged_high_timelines, output_path)
+    else:
+        writer = JSONWriter(merged_high_timelines, output_path)
+    writer.write()
     output_end_time = time.time()
     print(
-        f"  ✓ JSON output completed in {format_duration(output_end_time - output_start_time)}"
+        f"  ✓ {format_label} output completed in {format_duration(output_end_time - output_start_time)}"
     )
 
     # Calculate and display total execution time

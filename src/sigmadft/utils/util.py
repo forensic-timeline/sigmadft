@@ -1,5 +1,6 @@
 # src/sigmadft/utils/util.py
 
+import ast
 import re
 from urllib.parse import urlparse
 from sigmadft.events.LowLevelEvent import LowLevelEvent
@@ -94,7 +95,14 @@ class Utils:
         """Extract YouTube video title from evidence string"""
         evidence = low_level_event.evidence 
         
-        # Look for title in parentheses after the URL
+        # Plaso history format: "<URL> (<Title>) [count: N] ..."
+        # Take everything between the first " (" after the URL and ") [count:",
+        # so titles containing parentheses, e.g. "Mangu (Lyrics) - YouTube", stay intact.
+        match = re.search(r'^\S+\s+\((.*?)\)\s+\[count:', evidence)
+        if match:
+            return match.group(1).strip()
+
+        # Fallback: first parenthesised text
         # Pattern: (Title - YouTube) or (Title)
         title_pattern = r'\(([^)]+(?:\s*-\s*YouTube)?)\)'
         match = re.search(title_pattern, evidence)
@@ -153,7 +161,9 @@ class Utils:
             return "Group Created"
         elif 'failed adding user' in evidence:
             return "User Creation Failed"
-        
+        elif re.search(r'COMMAND=\S*useradd\b', evidence):
+            return "User Add Command"
+
         return "Unknown Activity"
     
     @staticmethod
@@ -170,7 +180,12 @@ class Utils:
         failed_match = re.search(r"failed adding user '([^']+)'", evidence)
         if failed_match:
             return failed_match.group(1)
-        
+
+        # Pattern for sudo command: COMMAND=/usr/sbin/useradd [options] username
+        command_match = re.search(r'COMMAND=\S*useradd\b.*\s([^\s]+)\s*$', evidence)
+        if command_match:
+            return command_match.group(1)
+
         return ""
     
     @staticmethod
@@ -179,7 +194,7 @@ class Utils:
         evidence = low_level_event.evidence
         
         # Look for sudo log pattern: username : TTY=pts/0 ; PWD=/path ; USER=root ; COMMAND=/usr/sbin/useradd
-        sudo_match = re.search(r'(\w+)\s*:\s*TTY=.*COMMAND=.*useradd', evidence)
+        sudo_match = re.search(r'(\w+)\s*:\s*TTY=.*COMMAND=\S*useradd\b', evidence)
         if sudo_match:
             return sudo_match.group(1)
         
@@ -643,4 +658,95 @@ class Utils:
             return "Network Reconnaissance"
         else:
             return "Command Execution"
-    
+
+    # ------------------------------------------------------------------
+    # Windows Prefetch (Plaso "prefetch" parser)
+    # ------------------------------------------------------------------
+    # Message example:
+    #   Prefetch [MSEDGE.EXE] was executed - run count 3 path hints:
+    #   \PROGRAM FILES (X86)\MICROSOFT\EDGE\APPLICATION\MSEDGE.EXE
+    #   hash: 0xF6B373B3 volume: 1 [serial number: ...  device path: ...]
+
+    @staticmethod
+    def extract_win_prefetch_process_name(low_level_event: LowLevelEvent) -> str:
+        """Executable name recorded in a Prefetch entry, e.g. MSEDGE.EXE"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        name_match = re.search(r'Prefetch \[([^\]]+)\] was executed', evidence)
+        return name_match.group(1) if name_match else ""
+
+    @staticmethod
+    def extract_win_prefetch_process_path(low_level_event: LowLevelEvent) -> str:
+        """Executable path from the Prefetch path hints"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        path_match = re.search(r'path hints: (.+?) hash:', evidence)
+        return path_match.group(1).strip() if path_match else ""
+
+    @staticmethod
+    def extract_win_prefetch_run_count(low_level_event: LowLevelEvent) -> str:
+        """Run count stored in the Prefetch file"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        count_match = re.search(r'was executed - run count (\d+)', evidence)
+        return count_match.group(1) if count_match else ""
+
+    # ---- Windows Security event 4688 (A new process has been created) ----
+    # Plaso winevtx message: "[4688 / 0x1250] Provider identifier: {...} Source Name:
+    # Microsoft-Windows-Security-Auditing Strings: ['v0'  'v1'  ...] Computer Name: ..."
+    # Strings follow the EventData order documented by Microsoft (version 2):
+    # 0 SubjectUserSid, 1 SubjectUserName, 2 SubjectDomainName, 3 SubjectLogonId,
+    # 4 NewProcessId, 5 NewProcessName, 6 TokenElevationType, 7 ProcessId,
+    # 8 CommandLine, 9 TargetUserSid, 10 TargetUserName, 11 TargetDomainName,
+    # 12 TargetLogonId, 13 ParentProcessName, 14 MandatoryLabel
+    @staticmethod
+    def _win_evtx_strings(low_level_event: LowLevelEvent) -> list:
+        """Parse the Strings list of a Plaso winevtx message into a list of values"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        block = re.search(r"Strings: \[(.*)\] Computer Name:", evidence, re.DOTALL)
+        if not block:
+            return []
+        values = []
+        # Each value is a Python-repr string literal ('...' or "..."), e.g. 'C:\\Windows\\explorer.exe'
+        for m in re.finditer(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"", block.group(1)):
+            try:
+                values.append(ast.literal_eval(m.group(0)))
+            except (ValueError, SyntaxError):
+                values.append(m.group(0)[1:-1])
+        return values
+
+    @staticmethod
+    def _win_evtx_string_at(low_level_event: LowLevelEvent, index: int) -> str:
+        values = Utils._win_evtx_strings(low_level_event)
+        value = values[index] if index < len(values) else ""
+        return "" if value == "-" else value
+
+    @staticmethod
+    def extract_win_4688_new_process_name(low_level_event: LowLevelEvent) -> str:
+        """NewProcessName: full path of the created process"""
+        return Utils._win_evtx_string_at(low_level_event, 5)
+
+    @staticmethod
+    def extract_win_4688_creator_process_name(low_level_event: LowLevelEvent) -> str:
+        """ParentProcessName (Creator Process Name, event version 2)"""
+        return Utils._win_evtx_string_at(low_level_event, 13)
+
+    @staticmethod
+    def extract_win_4688_command_line(low_level_event: LowLevelEvent) -> str:
+        """CommandLine (empty unless 'Include command line in process creation events' is enabled)"""
+        return Utils._win_evtx_string_at(low_level_event, 8)
+
+    @staticmethod
+    def extract_win_4688_subject_user(low_level_event: LowLevelEvent) -> str:
+        """Creator Subject as DOMAIN\\Account"""
+        user = Utils._win_evtx_string_at(low_level_event, 1)
+        domain = Utils._win_evtx_string_at(low_level_event, 2)
+        return f"{domain}\\{user}" if domain and user else user
+
+    @staticmethod
+    def extract_win_4688_token_elevation_type(low_level_event: LowLevelEvent) -> str:
+        """TokenElevationType mapped to its documented meaning"""
+        value = Utils._win_evtx_string_at(low_level_event, 6)
+        mapping = {
+            '%%1936': 'Type 1 (full token)',
+            '%%1937': 'Type 2 (elevated token)',
+            '%%1938': 'Type 3 (limited token)',
+        }
+        return mapping.get(value, value)

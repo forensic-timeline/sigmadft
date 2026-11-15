@@ -57,17 +57,19 @@ def CreateHighTimeline(low_level_timeline: LowLevelTimeline, rule: Rule, start_i
                 )
                         
             # Create and set trigger
-            if rule.reasoning:
-                trigger = create_trigger(rule, low_level_event, high_event)
-                high_event.trigger = trigger
-        
+            # Dinonaktifkan: 'trigger' tidak lagi dimasukkan ke output JSON
+            # if rule.reasoning:
+            #     trigger = create_trigger(rule, low_level_event, high_event)
+            #     high_event.trigger = trigger
+
 
         # Get supporting events
-        if hasattr(low_level_event, "id"):
-            supporting_events = low_level_timeline.get_supporting_events(
-                low_level_event.id
-            )
-            high_event.supporting = supporting_events
+        # Dinonaktifkan: 'supporting' tidak lagi dimasukkan ke output JSON
+        # if hasattr(low_level_event, "id"):
+        #     supporting_events = low_level_timeline.get_supporting_events(
+        #         low_level_event.id
+        #     )
+        #     high_event.supporting = supporting_events
 
         # Add to timeline
         high_level_timeline.add_event(high_event)
