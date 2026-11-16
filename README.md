@@ -167,33 +167,6 @@ Each high-level event has the following fields:
 
 If no rule matches, no output file is written.
 
-## Rule Development
-
-### Rule Structure
-
-Atlas rules (`-s atlas`) are defined in YAML format similar to Sigma rules,
-extended with `high_level_event`. Each `keys[].source` must be a function of
-the same name in `src/sigmadft/utils/util.py`. Rules for `-s sigma` follow the
-standard Sigma format and need no extra fields.
-
-```yaml
-title: "Example Detection Rule"
-id: "example-001"
-description: "Detects example activities"
-category: "example"
-detection:
-  keywords:
-    - "example_keyword"
-    - "another_keyword"
-  condition: "keywords"
-high_level_event:
-  type: "Example Activity"
-  description: "User performed {example_key}"
-  keys:
-    - name: "example_key"
-      source: "extract_example_data"
-```
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
