@@ -8,12 +8,12 @@ from pathlib import Path
 from typing import List
 import sigmadft.analyzers.ReadFromYamlAnalyzer as ReadFromYamlAnalyzer
 from sigmadft.reader.CSVReader import CSVReader
-from sigmadft.reader.YAMLReader import YAMLReader
 from sigmadft.timelines.LowLevelTimeline import LowLevelTimeline
 from sigmadft.timelines.HighLevelTimeline import MergeHighLevelTimeline
 from sigmadft.output.JSONWriter import JSONWriter
 from sigmadft.output.CSVWriter import CSVWriter
 from sigmadft.rules.Rule import Rule
+from sigmadft.adapters import ADAPTERS, get_adapter
 
 
 def format_duration(seconds):
@@ -26,25 +26,6 @@ def format_duration(seconds):
         minutes = int(seconds // 60)
         remaining_seconds = seconds % 60
         return f"{minutes}m {remaining_seconds:.2f}s"
-
-
-def discover_rules(rules_dir: str) -> List[str]:
-    """Auto-discover all YAML rule files in the rules directory."""
-    rules = []
-    rules_path = Path(rules_dir)
-    
-    if not rules_path.exists():
-        return rules
-    
-    for yaml_file in rules_path.rglob("*.yml"):
-        relative_path = "/" + str(yaml_file.relative_to(rules_path))
-        rules.append(relative_path)
-    
-    for yaml_file in rules_path.rglob("*.yaml"):
-        relative_path = "/" + str(yaml_file.relative_to(rules_path))
-        rules.append(relative_path)
-    
-    return sorted(rules)
 
 
 # Main function
@@ -68,19 +49,20 @@ def main():
         help="Output file path. Format is chosen from the extension: .json or .csv.",
     )
     parser.add_argument(
-        "-t",
-        "--type",
+        "-s",
+        "--rule-source",
         action="store",
         required=False,
-        type=str,
-        help="Type of the timeline to create.",
+        default="atlas",
+        choices=list(ADAPTERS) + ["all"],
+        help="Rule source to use: atlas (default), sigma, or all.",
     )
 
     # Read the arguments from the command line
     args = parser.parse_args()
     input_path = args.input_path
     output_path = args.output_path
-    event_type = args.type
+    rule_source = args.rule_source
 
     # Determine output format from the output file extension
     output_format = Path(output_path).suffix.lower().lstrip(".")
@@ -118,92 +100,21 @@ def main():
     # Create a list of high-level timeline
     high_timelines = []
 
-    # List of search rules
-    # Dictionary mapping event types to rules
-    event_analyzers = {
-        # Web browsing related events
-        "google-search": ["/web/google_search.yml"],
-        "bing-search": ["/web/bing_search.yml"],
-        "web-visits": ["/web/web_visit.yml"],
-        "youtube-watch": ["/web/youtube_watch.yml"],
-        "all-web-activity": [
-            "/web/google_search.yml",
-            "/web/bing_search.yml",
-            "/web/web_visit.yml",
-            "/web/youtube_watch.yml",
-        ],
-        # Linux Account Management
-        "user-add": [
-            "/linux/custom_susp/lnx_user_add.yml",
-        ],
-        "user-mod": [
-            "/linux/custom_susp/lnx_user_mod.yml",
-        ],
-        "account-management-activity": [
-            "/linux/custom_susp/lnx_user_add.yml",
-            "/linux/custom_susp/lnx_user_mod.yml",
-        ],
-        # Authentication related events
-        "auth-failure": [
-            "/linux/custom_susp/lnx_auth_failure.yml",
-        ],
-        "session-opened": [
-            "/linux/custom_susp/lnx_session_opened.yml",
-        ],
-        "authentication-activity": [
-            "/linux/custom_susp/lnx_auth_failure.yml",
-            "/linux/custom_susp/lnx_session_opened.yml",
-        ],
-        # Web security events
-        "web-shell": [
-            "/linux/custom_susp/lnx_web_shell_detection.yml",
-        ],
-        # System log related events
-        "security-tools": [
-            "/linux/builtin/syslog/lnx_syslog_security_tools_disabling_syslog.yml"
-        ],
-        "suspicious-dns": ["/linux/builtin/syslog/lnx_syslog_susp_named.yml"],
-        # Cron related events
-        "crontab-modification": [
-            "/linux/builtin/cron/lnx_cron_crontab_file_modification.yml"
-        ],
-        # VSFTPD related events
-        "ftp-errors": ["/linux/builtin/vsftpd/lnx_vsftpd_susp_error_messages.yml"],
-        "suspicious-logs": ["/linux/builtin/lnx_shell_susp_log_entries.yml"],
-        # Comprehensive rule sets
-        "all-linux-security": [
-            "/linux/custom_susp/lnx_user_add.yml",
-            "/linux/custom_susp/lnx_user_mod.yml",
-            "/linux/custom_susp/lnx_auth_failure.yml",
-            "/linux/custom_susp/lnx_session_opened.yml",
-            "/linux/custom_susp/lnx_web_shell_detection.yml",
-            "/linux/builtin/syslog/lnx_syslog_security_tools_disabling_syslog.yml",
-            "/linux/builtin/syslog/lnx_syslog_susp_named.yml",
-            "/linux/builtin/cron/lnx_cron_crontab_file_modification.yml",
-            "/linux/builtin/vsftpd/lnx_vsftpd_susp_error_messages.yml",
-            "/linux/builtin/lnx_shell_susp_log_entries.yml",
-        ],
-    }
-
-    # Default rules - auto-discover all YAML files in rules directory
+    # Auto-discover all YAML rules of the selected source(s) via adapters
     rules_dir = os.path.join(os.path.dirname(__file__), "rules")
-    default_rules = discover_rules(rules_dir)
+    sources = list(ADAPTERS) if rule_source == "all" else [rule_source]
+    rules = []
+    for source in sources:
+        adapter = get_adapter(source)
+        rules.extend((adapter, path) for path in adapter.discover())
+    print(f"Running analysis with rule source '{rule_source}' ({len(rules)} rules)")
 
-    # Get rules based on event_type, or use default rules
-    rules = event_analyzers.get(event_type, default_rules)
-
-    # Print information about selected rules
-    if event_type:
-        print(f"Running analysis with rule set: '{event_type}' ({len(rules)} rules)")
-    else:
-        print(f"Running analysis with default rule set ({len(rules)} rules)")
-
-    # Read the YAML rules
+    # Read the YAML rules (converted to SigmaDFT Rule objects by the adapter)
     rules_start_time = time.time()
     print("Loading YAML rules ...")
     yaml_contents: List[Rule] = []
-    for rule in rules:
-        yaml_file_path = os.path.join(os.path.dirname(__file__), "rules" + rule)
+    for adapter, yaml_file_path in rules:
+        display_path = os.path.relpath(yaml_file_path, rules_dir)
 
         # Check if rule file exists
         if not os.path.exists(yaml_file_path):
@@ -211,12 +122,11 @@ def main():
             continue
 
         try:
-            reader = YAMLReader(yaml_file_path)
-            yaml_content = reader.read()
+            yaml_content = adapter.load(yaml_file_path)
             yaml_contents.append(yaml_content)
-            print(f"  ✓ Loaded rule: {rule}")
+            print(f"  ✓ Loaded rule [{adapter.name}]: {display_path}")
         except Exception as e:
-            print(f"  ✗ Error loading rule {rule}: {str(e)}")
+            print(f"  ✗ Error loading rule [{adapter.name}] {display_path}: {str(e)}")
             continue
 
     rules_end_time = time.time()

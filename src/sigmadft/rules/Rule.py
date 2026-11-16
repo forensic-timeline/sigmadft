@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime, date
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Callable
 from enum import Enum
 
 class RuleStatus(Enum):
@@ -29,6 +29,9 @@ class DetectionDefinition:
     keywords: Union[List[str], Dict[str, List[str]]]
     condition: str = "keywords"
     modifiers: List[str] = field(default_factory=list)
+    # Optional compiled matcher (set by non-atlas adapters, e.g. SigmaAdapter).
+    # When present it replaces keyword matching: matcher(event_text) -> bool.
+    matcher: Optional[Callable[[str], bool]] = field(default=None, repr=False, compare=False)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DetectionDefinition":
@@ -130,6 +133,8 @@ class Rule:
     references: List[str] = field(default_factory=list)
     tags: List[str] = field(default_factory=list)
     is_sigma_rule: bool = field(default=False)
+    # Rule source / adapter name ("atlas", "sigma")
+    source: str = field(default="atlas")
 
     @classmethod
     def from_yaml(cls, yaml_data: Dict) -> "Rule":

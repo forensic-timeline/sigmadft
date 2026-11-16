@@ -70,8 +70,16 @@ class LowLevelTimeline:
         use_regex = "re" in rule.detection.modifiers
         require_all = "all" in rule.detection.modifiers
 
+        matcher = rule.detection.matcher
+
         for event in self.events[start_id:end_id]:
             event_text = f"{event.type} {event.evidence} {event.plugin}"
+
+            # Adapter-compiled matcher (e.g. Sigma rules) replaces keyword matching
+            if matcher is not None:
+                if matcher(event_text):
+                    matching_events.append(event)
+                continue
 
             matches = []
 

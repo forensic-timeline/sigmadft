@@ -46,6 +46,9 @@ def CreateHighTimeline(low_level_timeline: LowLevelTimeline, rule: Rule, start_i
 
         if (rule.is_sigma_rule): 
             high_event.description = rule.description
+            # Rules from the Sigma adapter have no high_level_event: use title as type
+            if rule.source == "sigma":
+                high_event.type = rule.title
         else:
             high_event.type = rule.high_level_event.type
             # Process each key definition

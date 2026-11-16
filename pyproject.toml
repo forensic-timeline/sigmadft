@@ -29,6 +29,7 @@ classifiers = [
 keywords = ["forensics", "timeline", "sigma", "detection", "security"]
 dependencies = [
     "PyYAML>=6.0",
+    "pySigma>=2.1",
 ]
 
 [project.urls]
