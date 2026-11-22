@@ -66,6 +66,7 @@ sigmadft -h
 | `-i`, `--input_path` | Yes | Path to a Plaso CSV timeline. |
 | `-o`, `--output_path` | Yes | Output file. The format follows the extension: `.json` or `.csv`. |
 | `-s`, `--rule-source` | No | Rule source: `atlas` (default), `sigma`, or `all` (both). See [Rule Sources](#rule-sources). |
+| `-d`, `--decode` | No | Decode encoded payloads before matching. See [Payload Decoding](#payload-decoding). |
 
 ### Basic Commands
 
@@ -116,6 +117,23 @@ To add another rule source, create an adapter that subclasses
 `sigmadft.adapters.base.RuleAdapter` (set `name`, `rules_subdir`, implement
 `load()`) and register it in `ADAPTERS` in `sigmadft/adapters/__init__.py`; it
 then becomes available as a `-s` choice.
+
+### Payload Decoding
+
+With `-d`/`--decode`, encoded payloads are decoded before rule matching
+(`src/sigmadft/utils/log_decoder.py`, following the logic of
+[reconsgat's `log_decoder.py`](https://github.com/forensic-timeline/reconsgat/blob/main/process/log_decoder.py)):
+
+- `base64_decode("...")` in any message.
+- Web log lines (`http_request:` with a query string): the first query value is
+  decoded with URL unquoting, hex, base64, base64 + gzip/zlib, ROT13 and
+  single-byte XOR.
+
+Each candidate is scored by the number of distinct shell command keywords it
+contains (`id`, `cat`, `wget`, `mysql`, ...). The best candidate is kept only
+if its score is above 0 and is appended to the message as
+`original [DECODED: text]`, so rules match the original and the decoded text and
+`evidence_message` shows both. Key extractors still read the original message.
 
 ### Example Analysis
 

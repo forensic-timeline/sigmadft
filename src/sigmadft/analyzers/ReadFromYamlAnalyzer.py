@@ -2,7 +2,8 @@
 
 __author__ = ['Java Kanaya Prada']
 
-from typing import List 
+import copy
+from typing import List
 from sigmadft.analyzers.KeyProcessor import KeyProcessor
 from sigmadft.events.BaseEvent import BaseEvent
 from sigmadft.events.LowLevelEvent import LowLevelEvent
@@ -95,6 +96,13 @@ def process_keys(
 ) -> None:
     """Process key definitions and set values in high-level event"""
     key_processor = KeyProcessor()
+
+    # Key extractors read the original message, without the [DECODED: ...]
+    # annotation added by -d/--decode
+    raw_evidence = getattr(low_level_event, "raw_evidence", None)
+    if raw_evidence is not None and raw_evidence != low_level_event.evidence:
+        low_level_event = copy.copy(low_level_event)
+        low_level_event.evidence = raw_evidence
 
     for key_def in key_definitions:
         try:

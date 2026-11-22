@@ -57,6 +57,13 @@ def main():
         choices=list(ADAPTERS) + ["all"],
         help="Rule source to use: atlas (default), sigma, or all.",
     )
+    parser.add_argument(
+        "-d",
+        "--decode",
+        action="store_true",
+        help="Decode encoded payloads (web query strings, PHP base64_decode) before "
+        "matching; decoded text is appended to the message as [DECODED: ...].",
+    )
 
     # Read the arguments from the command line
     args = parser.parse_args()
@@ -91,11 +98,13 @@ def main():
     timeline_start_time = time.time()
     print("Creating low-level timeline ...")
     low_timeline = LowLevelTimeline()
-    low_timeline.create_timeline(reader)
+    low_timeline.create_timeline(reader, decode=args.decode)
     timeline_end_time = time.time()
     print(
         f"  ✓ Low-level timeline created with {len(low_timeline.events)} events in {format_duration(timeline_end_time - timeline_start_time)}"
     )
+    if args.decode:
+        print(f"  ✓ Decoded payloads appended to {low_timeline.decoded_count} messages")
 
     # Create a list of high-level timeline
     high_timelines = []
