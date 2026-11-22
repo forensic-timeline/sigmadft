@@ -168,12 +168,17 @@ def _decode_web_query(message: str) -> Optional[str]:
     return choose_best(decode_candidates(param.group(2)))
 
 
-def decode_message(message: str) -> str:
-    """Return ``message [DECODED: text]`` if a payload decodes to commands, else message."""
+def decode_payload(message: str) -> Optional[str]:
+    """Decoded payload text of a message (single line), or None if nothing decodes."""
     if not message:
-        return message
+        return None
     decoded = _decode_php(message) or _decode_web_query(message)
     if decoded is None:
-        return message
-    decoded = " ".join(decoded.split())  # keep the message on a single line
-    return f"{message} [DECODED: {decoded}]"
+        return None
+    return " ".join(decoded.split())  # keep the message on a single line
+
+
+def decode_message(message: str) -> str:
+    """Return ``message [DECODED: text]`` if a payload decodes to commands, else message."""
+    decoded = decode_payload(message)
+    return message if decoded is None else f"{message} [DECODED: {decoded}]"

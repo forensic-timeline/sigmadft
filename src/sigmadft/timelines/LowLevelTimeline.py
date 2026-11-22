@@ -6,7 +6,7 @@ from typing import List
 from sigmadft.events.LowLevelEvent import LowLevelEvent
 from sigmadft.reader.CSVReader import CSVReader
 from sigmadft.rules.Rule import Rule
-from sigmadft.utils.log_decoder import decode_message
+from sigmadft.utils.log_decoder import decode_payload
 
 
 num_supporting_events = 5
@@ -44,8 +44,10 @@ class LowLevelTimeline:
                 event.type = f"{row[1]}-{row[2]}"               # [1] timestamp_desc, [3] source_long
                 event.path = row[6]                             # [6] display_name
                 event.raw_evidence = row[4]                     # [4] message
-                event.evidence = decode_message(row[4]) if decode else row[4]
-                if event.evidence != event.raw_evidence:
+                event.decoded_payload = decode_payload(row[4]) if decode else None
+                event.evidence = row[4]
+                if event.decoded_payload is not None:
+                    event.evidence = f"{row[4]} [DECODED: {event.decoded_payload}]"
                     self.decoded_count += 1
                 event.plugin = f"{row[2]}-{row[3]}-{row[5]}"    # [2] source, [3] source_long, [5] parser
                 event.provenance = {

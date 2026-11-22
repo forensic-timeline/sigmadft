@@ -92,7 +92,7 @@ source.
 
 | Source (`-s`) | Folder | Format | Output event |
 |---------------|--------|--------|--------------|
-| `atlas` (default) | `rules/atlas/rules/` | Native SigmaDFT format: `detection.keywords` (modifiers `re`, `all`) plus `high_level_event` (type, description template, extracted keys). | `type`, `description` and `keys` from `high_level_event`. |
+| `atlas` (default) | `rules/atlas/rules/` | Native SigmaDFT format: `detection.keywords` (modifiers `re`, `all`), or several keyword groups `keywords_group_1`, `keywords_group_2`, ... combined by `condition` (`and`, `or`, `not`, parentheses), plus `high_level_event` (type, description template, extracted keys). | `type`, `description` and `keys` from `high_level_event`. |
 | `sigma` | `rules/sigma/` | Standard [Sigma](https://github.com/SigmaHQ/sigma-specification) rules, parsed with [pySigma](https://github.com/SigmaHQ/pySigma): field selections, modifiers (`contains`, `startswith`, `endswith`, `all`, `re`, `cidr`, `cased`, ...) and conditions (`and`, `or`, `not`, `1 of`, `all of`). | `type` = rule `title`, `description` = rule `description`, `category` = `logsource` category/service/product, no `keys`. |
 | `all` | both | Atlas and Sigma rules in a single run. | Both of the above, merged into one timeline. |
 

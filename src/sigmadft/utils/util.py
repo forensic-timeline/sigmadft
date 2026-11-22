@@ -660,6 +660,164 @@ class Utils:
             return "Command Execution"
 
     # ------------------------------------------------------------------
+    # Web requests (Plaso "text/apache_access" parser) and decoded payloads
+    # ------------------------------------------------------------------
+    # Message example:
+    #   http_request: GET /path.php?wp_meta=WyJpZCJd HTTP/1.1 from: 172.17.130.196
+    #   code: 200 user_agent: python-requests/2.27.1
+
+    @staticmethod
+    def extract_http_request_uri(low_level_event: LowLevelEvent) -> str:
+        """Extract the requested URI (path and query string) of an HTTP request"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        uri_match = re.search(r'http_request:\s+\S+\s+(\S+)', evidence)
+        return uri_match.group(1) if uri_match else ""
+
+    @staticmethod
+    def extract_decoded_payload(low_level_event: LowLevelEvent) -> str:
+        """Extract the payload decoded by -d/--decode (the text of [DECODED: ...])"""
+        return getattr(low_level_event, 'decoded_payload', None) or ""
+
+    # ------------------------------------------------------------------
+    # sudo (Plaso "text/syslog", "text/syslog_traditional", "systemd_journal")
+    # ------------------------------------------------------------------
+    # Message examples:
+    #   [sudo] phopkins : TTY=pts/1 ; PWD=/var/www/... ; USER=root ; COMMAND=/bin/cat /etc/shadow
+    #   kuncen [sudo  pid: 11629] testuser : TTY=pts/0 ; PWD=/home/testuser ; USER=root ; COMMAND=/usr/bin/cat /etc/shadow
+
+    @staticmethod
+    def extract_sudo_user(low_level_event: LowLevelEvent) -> str:
+        """Extract the user who ran sudo"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        user_match = re.search(r'(\S+)\s+:\s+TTY=', evidence)
+        return user_match.group(1) if user_match else ""
+
+    @staticmethod
+    def extract_sudo_tty(low_level_event: LowLevelEvent) -> str:
+        """Extract the terminal sudo was run from"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        tty_match = re.search(r'TTY=([^\s;]+)', evidence)
+        return tty_match.group(1) if tty_match else ""
+
+    @staticmethod
+    def extract_sudo_pwd(low_level_event: LowLevelEvent) -> str:
+        """Extract the working directory sudo was run from"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        pwd_match = re.search(r'PWD=([^;]+?)\s*;', evidence)
+        return pwd_match.group(1) if pwd_match else ""
+
+    @staticmethod
+    def extract_sudo_run_as(low_level_event: LowLevelEvent) -> str:
+        """Extract the user the sudo command runs as"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        user_match = re.search(r';\s*USER=([^\s;]+)', evidence)
+        return user_match.group(1) if user_match else ""
+
+    @staticmethod
+    def extract_sudo_command(low_level_event: LowLevelEvent) -> str:
+        """Extract the command executed with sudo"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        command_match = re.search(r'COMMAND=(.+)$', evidence)
+        return command_match.group(1).strip() if command_match else ""
+
+    # ------------------------------------------------------------------
+    # Logins (sshd, systemd-logind, PAM)
+    # ------------------------------------------------------------------
+    # Message examples:
+    #   [sshd] [943610]: Accepted password for root from 243.23.54.175 port 37190 ssh2
+    #   [systemd-logind  pid: 623] New session 44433 of user root.
+    #   [sshd] [951322]: Failed password for root from 71.238.128.110 port 54700 ssh2
+    #   [sshd  pid: 10808] pam_unix(sshd:auth): authentication failure; ... rhost=127.0.0.1  user=root
+
+    @staticmethod
+    def extract_login_user(low_level_event: LowLevelEvent) -> str:
+        """Extract the user of a login or login attempt"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        patterns = [
+            r'Accepted \S+ for (\S+)',
+            r'New session \S+ of user ([^\s.]+)',
+            r'Failed password for (?:invalid user )?(\S+)',
+            r'Invalid user (\S+)',
+            r'authentication failure;.*\buser=(\S+)',
+        ]
+        for pattern in patterns:
+            user_match = re.search(pattern, evidence)
+            if user_match:
+                return user_match.group(1)
+        return ""
+
+    @staticmethod
+    def extract_login_method(low_level_event: LowLevelEvent) -> str:
+        """Extract how the user logged in (password, publickey, session)"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        method_match = re.search(r'Accepted (\S+) for', evidence)
+        if method_match:
+            return method_match.group(1)
+        if 'New session' in evidence:
+            return "session"
+        return ""
+
+    # ------------------------------------------------------------------
+    # Account management (passwd, userdel)
+    # ------------------------------------------------------------------
+    # Message examples:
+    #   [passwd] [951308]: pam_unix(passwd:chauthtok): password changed for webadmin_cyberpanel
+    #   [userdel  pid: 1234] delete user 'bob'
+
+    @staticmethod
+    def extract_password_change_user(low_level_event: LowLevelEvent) -> str:
+        """Extract the user whose password was changed"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        user_match = re.search(r'password (?:changed|updated|reset) for (\S+)', evidence)
+        return user_match.group(1) if user_match else ""
+
+    @staticmethod
+    def extract_password_change_action(low_level_event: LowLevelEvent) -> str:
+        """Extract the password action (changed, updated, reset)"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        action_match = re.search(r'password (changed|updated|reset)', evidence)
+        return action_match.group(1) if action_match else ""
+
+    @staticmethod
+    def extract_userdel_username(low_level_event: LowLevelEvent) -> str:
+        """Extract the deleted user (or the user owning a removed group)"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        user_match = re.search(r"(?:delete|deleted|remove|removed) user '?([^'\s]+)", evidence)
+        if user_match:
+            return user_match.group(1)
+        group_match = re.search(r"removed (?:shadow )?group '([^']+)'", evidence)
+        return group_match.group(1) if group_match else ""
+
+    @staticmethod
+    def extract_userdel_activity_type(low_level_event: LowLevelEvent) -> str:
+        """Classify the user deletion log line"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        if 'shadow group' in evidence:
+            return "Shadow Group Removed"
+        if re.search(r'(?:delete|deleted|remove|removed) user', evidence):
+            return "User Deleted"
+        return ""
+
+    # Message example (permission denied):
+    #   [python3  pid: 6020] ... file '/run/ubuntu-advantage//aptnews.json' couldn't be
+    #   accessed by user '_apt'. - pkgAcquire::Run (13: Permission denied)
+
+    @staticmethod
+    def extract_permission_denied_target(low_level_event: LowLevelEvent) -> str:
+        """Extract the path that could not be accessed (first quoted or bare absolute path)"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        path_match = (re.search(r"['\"](/[^'\"]+)['\"]", evidence)
+                      or re.search(r'(?<![\w.])(/[^\s:;,()]+)', evidence))
+        return path_match.group(1) if path_match else ""
+
+    @staticmethod
+    def extract_permission_denied_user(low_level_event: LowLevelEvent) -> str:
+        """Extract the user that was denied access, if logged"""
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        user_match = re.search(r"by user '([^']+)'", evidence)
+        return user_match.group(1) if user_match else ""
+
+    # ------------------------------------------------------------------
     # Windows Prefetch (Plaso "prefetch" parser)
     # ------------------------------------------------------------------
     # Message example:

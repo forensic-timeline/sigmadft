@@ -1,5 +1,6 @@
 # src/sigmadft/rules/Rule.py
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, date
 from typing import List, Dict, Any, Optional, Union, Callable
@@ -33,21 +34,30 @@ class DetectionDefinition:
     # When present it replaces keyword matching: matcher(event_text) -> bool.
     matcher: Optional[Callable[[str], bool]] = field(default=None, repr=False, compare=False)
 
+    # Keyword groups (keywords_group_1, ...) combined by `condition`; empty for
+    # rules with a single `keywords` entry
+    groups: Dict[str, "KeywordGroup"] = field(default_factory=dict)
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DetectionDefinition":
         if not isinstance(data, dict):
             raise ValueError("Detection definition must be a dictionary")
 
-        keywords_data = data.get("keywords", [])
         condition = data.get("condition", "keywords")
-        modifiers = []
+        group_names = [name for name in data if name != "condition"]
 
-        if isinstance(keywords_data, dict):
-            modifier_key = next(iter(keywords_data))
-            if modifier_key.startswith("|"):
-                modifiers = [m for m in modifier_key.split("|") if m]
-                keywords_data = keywords_data[modifier_key]
+        # Several keyword groups: compile `condition` into a matcher
+        if group_names and group_names != ["keywords"]:
+            groups = {name: KeywordGroup.from_value(data[name]) for name in group_names}
+            evaluate = compile_condition(condition, groups)
+            return cls(
+                keywords=[],
+                condition=condition,
+                groups=groups,
+                matcher=lambda text: evaluate(lambda name: groups[name].matches(text)),
+            )
 
+        keywords_data, modifiers = _split_modifiers(data.get("keywords", []))
         return cls(
             keywords=keywords_data,
             condition=condition,
@@ -59,16 +69,148 @@ class DetectionDefinition:
         errors = []
 
         # Validate keywords
-        if not self.keywords:
+        if not self.keywords and not self.groups:
             errors.append("At least one keyword is required")
 
         # Validate modifiers
-        valid_modifiers = {'all', 're'}
-        for modifier in self.modifiers:
-            if modifier not in valid_modifiers:
+        modifiers = list(self.modifiers)
+        for group in self.groups.values():
+            modifiers.extend(group.modifiers)
+        for modifier in modifiers:
+            if modifier not in VALID_MODIFIERS:
                 errors.append(f"Invalid modifier: {modifier}")
 
         return errors
+
+
+VALID_MODIFIERS = {"all", "re"}
+
+
+def _split_modifiers(value: Any):
+    """Split a keywords value into (keywords, modifiers).
+
+    The value is a list of keywords, a single keyword, or a dict keyed by the
+    modifiers, e.g. {'|all|re': [...]}.
+    """
+    modifiers: List[str] = []
+    if isinstance(value, dict):
+        modifier_key = next(iter(value))
+        if modifier_key.startswith("|"):
+            modifiers = [m for m in modifier_key.split("|") if m]
+            value = value[modifier_key]
+    if isinstance(value, str):
+        value = [value]
+    return value or [], modifiers
+
+
+@dataclass
+class KeywordGroup:
+    """One keyword group (keywords_group_N) of a detection.
+
+    Matching is the same as a single `keywords` entry: substring, or regex
+    (re.search) with the `re` modifier; any keyword, or every keyword with
+    the `all` modifier.
+    """
+
+    keywords: List[str]
+    modifiers: List[str] = field(default_factory=list)
+    patterns: List[Any] = field(default_factory=list, repr=False, compare=False)
+
+    @classmethod
+    def from_value(cls, value: Any) -> "KeywordGroup":
+        keywords, modifiers = _split_modifiers(value)
+        keywords = [str(k) for k in keywords]
+        if not keywords:
+            raise ValueError("A keyword group needs at least one keyword")
+        patterns: List[Any] = keywords
+        if "re" in modifiers:
+            patterns = [re.compile(k) for k in keywords]
+        return cls(keywords=keywords, modifiers=modifiers, patterns=patterns)
+
+    def matches(self, text: str) -> bool:
+        if "re" in self.modifiers:
+            results = (p.search(text) is not None for p in self.patterns)
+        else:
+            results = (k in text for k in self.patterns)
+        return all(results) if "all" in self.modifiers else any(results)
+
+
+_CONDITION_TOKEN = re.compile(r"\s*(\(|\)|[A-Za-z_][A-Za-z0-9_]*)")
+
+
+def compile_condition(condition: str, groups: Dict[str, Any]) -> Callable[[Callable[[str], bool]], bool]:
+    """Compile a condition such as 'keywords_group_1 and (keywords_group_2 or
+    keywords_group_3)' into evaluate(group_matches) -> bool.
+
+    Operators: and, or, not, parentheses (precedence not > and > or).
+    group_matches(name) is only called for the groups that are needed.
+    """
+    if not isinstance(condition, str) or not condition.strip():
+        raise ValueError("Detection condition is required")
+
+    tokens = []
+    position = 0
+    text = condition.strip()
+    while position < len(text):
+        match = _CONDITION_TOKEN.match(text, position)
+        if not match:
+            raise ValueError(f"Invalid condition syntax at '{text[position:]}'")
+        tokens.append(match.group(1))
+        position = match.end()
+        while position < len(text) and text[position].isspace():
+            position += 1
+
+    index = 0
+
+    def peek():
+        return tokens[index] if index < len(tokens) else None
+
+    def take():
+        nonlocal index
+        token = peek()
+        index += 1
+        return token
+
+    def parse_or():
+        node = parse_and()
+        while peek() == "or":
+            take()
+            left, right = node, parse_and()
+            node = lambda m, l=left, r=right: l(m) or r(m)
+        return node
+
+    def parse_and():
+        node = parse_not()
+        while peek() == "and":
+            take()
+            left, right = node, parse_not()
+            node = lambda m, l=left, r=right: l(m) and r(m)
+        return node
+
+    def parse_not():
+        if peek() == "not":
+            take()
+            operand = parse_not()
+            return lambda m, o=operand: not o(m)
+        return parse_atom()
+
+    def parse_atom():
+        token = take()
+        if token == "(":
+            node = parse_or()
+            if take() != ")":
+                raise ValueError(f"Missing ')' in condition '{condition}'")
+            return node
+        if token is None or token in ("and", "or", "not", ")"):
+            raise ValueError(f"Unexpected '{token}' in condition '{condition}'")
+        if token not in groups:
+            raise ValueError(f"Condition refers to unknown keyword group '{token}'")
+        return lambda m, name=token: m(name)
+
+    evaluate = parse_or()
+    if index != len(tokens):
+        raise ValueError(f"Unexpected '{tokens[index]}' in condition '{condition}'")
+    return evaluate
 
 
 @dataclass
@@ -220,8 +362,18 @@ class Rule:
             "condition": self.detection.condition
         }
         
+        # Keyword groups combined by condition
+        if self.detection.groups:
+            detection_dict = {
+                name: (
+                    {'|' + '|'.join(group.modifiers): group.keywords}
+                    if group.modifiers else group.keywords
+                )
+                for name, group in self.detection.groups.items()
+            }
+            detection_dict["condition"] = self.detection.condition
         # Add modifiers if present
-        if self.detection.modifiers:
+        elif self.detection.modifiers:
             modifier_key = '|' + '|'.join(self.detection.modifiers)
             detection_dict = {
                 "keywords": {
