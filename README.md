@@ -157,7 +157,7 @@ Each high-level event has the following fields:
 |-------|-------------|
 | `id` | Line number of the matching row in the input CSV |
 | `date_time_min`, `date_time_max` | Event timestamp (range) |
-| `evidence_source` | `message` of the matching row |
+| `evidence_message` | `message` of the matching row |
 | `type` | Event type (Atlas: `high_level_event.type`; Sigma: rule `title`) |
 | `description` | Event description (Atlas: filled template; Sigma: rule `description`) |
 | `category` | Rule category (Sigma: `logsource` category/service/product) |

@@ -32,7 +32,7 @@ def CreateHighTimeline(low_level_timeline: LowLevelTimeline, rule: Rule, start_i
         # Create a high level event
         high_event = HighLevelEvent()
         high_event.id = low_level_event.id
-        high_event.evidence_source = low_level_event.evidence
+        high_event.evidence_message = low_level_event.evidence
         high_event.category = rule.category
         high_event.plugin = low_level_event.plugin
         high_event.files = low_level_event.path

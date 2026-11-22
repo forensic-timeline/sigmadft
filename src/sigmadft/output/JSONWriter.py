@@ -18,7 +18,7 @@ class JSONWriter:
                 'id': event.id,
                 'date_time_min': event.date_time_min,
                 'date_time_max': event.date_time_max,
-                'evidence_source': event.evidence_source,
+                'evidence_message': event.evidence_message,
                 'type': event.type,
                 'description': event.description,
                 'category': event.category,

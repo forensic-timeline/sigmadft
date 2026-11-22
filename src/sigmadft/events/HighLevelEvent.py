@@ -10,7 +10,7 @@ class HighLevelEvent(BaseEvent):
     
     def __init__(self):
         super().__init__()
-        self.evidence_source: Optional[str] = None              
+        self.evidence_message: Optional[str] = None              
         self.description: Optional[str] = None                  
         self.category: Optional[str] = None                     
         self.device: Optional[str] = None                       
@@ -39,7 +39,7 @@ class HighLevelEvent(BaseEvent):
             "id": self.id,
             "date_time_min": self.date_time_min,
             "date_time_max": self.date_time_max,
-            "evidence_source": self.evidence_source,
+            "evidence_message": self.evidence_message,
             "type": self.type,
             "description": self.description,
             "category": self.category,

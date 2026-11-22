@@ -20,7 +20,7 @@ class CSVWriter:
         """
         timeline_dict = JSONWriter(self.timeline, self.csv_path).to_dict()
         fieldnames = [
-            'id', 'date_time_min', 'date_time_max', 'evidence_source', 'type',
+            'id', 'date_time_min', 'date_time_max', 'evidence_message', 'type',
             'description', 'category', 'plugin', 'files', 'keys',
         ]
 

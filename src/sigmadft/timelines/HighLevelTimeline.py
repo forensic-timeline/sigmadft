@@ -43,7 +43,7 @@ class HighLevelTimeline:
         for i in indexes:
             # Check if the events match exactly
             if self.exact_match(self.events[index], self.events[i]):
-                print("Merging events: ", self.events[index].evidence_source, " and ", self.events[i].evidence_source)
+                print("Merging events: ", self.events[index].evidence_message, " and ", self.events[i].evidence_message)
                 self.events[index].merge(self.events[i].id)
                 merged = True
         
@@ -52,7 +52,7 @@ class HighLevelTimeline:
     def exact_match(self, event: HighLevelEvent, another_event: HighLevelEvent) -> bool:
         """Tries to match a test event with the current event and returns true if they match exactly. We do not check id, date_time_min, date_time_max, trigger, supporting, merged_id"""
         
-        if event.evidence_source != another_event.evidence_source:
+        if event.evidence_message != another_event.evidence_message:
             return False
         if event.type != another_event.type:
             return False
