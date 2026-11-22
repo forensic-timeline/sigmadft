@@ -9,7 +9,7 @@ from sigmadft.events.LowLevelEvent import LowLevelEvent
 from sigmadft.events.HighLevelEvent import HighLevelEvent, ReasoningArtefact
 from sigmadft.timelines.HighLevelTimeline import HighLevelTimeline
 from sigmadft.timelines.LowLevelTimeline import LowLevelTimeline
-from sigmadft.rules.Rule import KeyDefinition, Rule
+from sigmadft.rules.Rule import KeyDefinition, Rule, RuleLevel
 from datetime import datetime
 
 
@@ -73,6 +73,14 @@ def CreateHighTimeline(low_level_timeline: LowLevelTimeline, rule: Rule, start_i
         #         low_level_event.id
         #     )
         #     high_event.supporting = supporting_events
+
+        # Rule that produced this event (used to build type_candidate when
+        # events of the same log line are merged in MergeHighLevelTimeline)
+        level = rule.level.value if isinstance(rule.level, RuleLevel) else rule.level
+        high_event.rule_file = rule.rule_file
+        high_event.rule_source = rule.source
+        high_event.rule_level = level.lower() if isinstance(level, str) else None
+        high_event.rule_type = high_event.type or rule.title
 
         # Add to timeline
         high_level_timeline.add_event(high_event)

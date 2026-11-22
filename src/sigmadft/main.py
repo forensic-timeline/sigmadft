@@ -123,6 +123,7 @@ def main():
 
         try:
             yaml_content = adapter.load(yaml_file_path)
+            yaml_content.rule_file = display_path.replace(os.sep, "/")
             yaml_contents.append(yaml_content)
             print(f"  ✓ Loaded rule [{adapter.name}]: {display_path}")
         except Exception as e:

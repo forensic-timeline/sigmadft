@@ -135,6 +135,8 @@ class Rule:
     is_sigma_rule: bool = field(default=False)
     # Rule source / adapter name ("atlas", "sigma")
     source: str = field(default="atlas")
+    # Rule file path relative to src/sigmadft/rules/ (forward slashes), set in main.py
+    rule_file: str = field(default="")
 
     @classmethod
     def from_yaml(cls, yaml_data: Dict) -> "Rule":

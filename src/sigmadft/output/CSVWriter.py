@@ -20,8 +20,9 @@ class CSVWriter:
         """
         timeline_dict = JSONWriter(self.timeline, self.csv_path).to_dict()
         fieldnames = [
-            'id', 'date_time_min', 'date_time_max', 'evidence_message', 'type',
-            'description', 'category', 'plugin', 'files', 'keys',
+            'id', 'date_time_min', 'date_time_max', 'evidence_message',
+            'type_candidate', 'type', 'description', 'category', 'plugin',
+            'files', 'keys',
         ]
 
         with open(self.csv_path, 'w', newline='', encoding='utf-8') as file:
@@ -29,5 +30,6 @@ class CSVWriter:
             writer.writeheader()
             for event in timeline_dict.values():
                 row = dict(event)
+                row['type_candidate'] = json.dumps(event.get('type_candidate') or {}, ensure_ascii=False)
                 row['keys'] = json.dumps(event.get('keys') or {}, ensure_ascii=False)
                 writer.writerow(row)

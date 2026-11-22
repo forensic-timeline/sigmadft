@@ -1,8 +1,11 @@
 # src/sigmadft/timelines/HighLevelTimeline.py
 
 from datetime import datetime
-from typing import List
+from typing import Any, Dict, List
 from sigmadft.events.HighLevelEvent import HighLevelEvent
+
+# Rule level priority for choosing the primary event (unknown/None = 0)
+LEVEL_RANK = {"informational": 1, "low": 2, "medium": 3, "high": 4, "critical": 5}
 
 
 class HighLevelTimeline:
@@ -87,6 +90,10 @@ class MergeHighLevelTimeline:
         for high_timeline in self.high_timelines:
             merged_timeline.extend(high_timeline.events)
 
+        # One high-level event per log line: events are grouped by id (the
+        # input CSV row), all matching rules go to type_candidate
+        merged_timeline = self.merge_by_id(merged_timeline)
+
         # Convert date_time_min to datetime objects for sorting
         # Handle invalid dates (like year 0000) by using a default date
         default_date = datetime.fromisoformat("1970-01-01T00:00:00.000000+00:00")
@@ -112,3 +119,34 @@ class MergeHighLevelTimeline:
         merged_high_timeline.add_events(merged_timeline)
 
         return merged_high_timeline
+
+    @staticmethod
+    def merge_by_id(events: List[HighLevelEvent]) -> List[HighLevelEvent]:
+        """Merge events of the same log line (same id) into one event.
+
+        The primary event (its type, description, category, keys) is the one
+        whose rule has the highest level; on a tie, the rule processed first
+        (atlas before sigma, then sorted rule path). type_candidate lists every
+        matching rule in processing order, keyed by rule file.
+        """
+        groups: Dict[Any, List[HighLevelEvent]] = {}
+        for event in events:
+            groups.setdefault(event.id, []).append(event)
+
+        merged = []
+        for group in groups.values():
+            primary = max(
+                enumerate(group),
+                key=lambda item: (LEVEL_RANK.get(item[1].rule_level, 0), -item[0]),
+            )[1]
+            primary.type_candidate = {
+                event.rule_file: {
+                    "type": event.rule_type,
+                    "source": event.rule_source,
+                    "level": event.rule_level,
+                }
+                for event in group
+            }
+            merged.append(primary)
+
+        return merged

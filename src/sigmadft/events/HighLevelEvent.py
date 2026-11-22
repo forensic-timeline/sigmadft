@@ -18,7 +18,14 @@ class HighLevelEvent(BaseEvent):
         self.trigger: Optional[ReasoningArtefact] = None        
         self.supporting: Dict[str, List[Dict[str, Any]]] = {}   # five low level events before and after the event
         self.merged_id: List[int] = []                          
-        self.date_time_iso: Optional[datetime] = None           
+        self.date_time_iso: Optional[datetime] = None
+        # All rules that matched this log line: {rule_file: {type, source, level}}
+        self.type_candidate: Dict[str, Dict[str, Optional[str]]] = {}
+        # Rule that produced this event (filled by ReadFromYamlAnalyzer)
+        self.rule_file: Optional[str] = None
+        self.rule_source: Optional[str] = None
+        self.rule_level: Optional[str] = None
+        self.rule_type: Optional[str] = None
 
     def add_time(self, date_time: str) -> None:
         """Sets the time for the event, adjusting min and max if necessary"""
@@ -40,6 +47,7 @@ class HighLevelEvent(BaseEvent):
             "date_time_min": self.date_time_min,
             "date_time_max": self.date_time_max,
             "evidence_message": self.evidence_message,
+            "type_candidate": self.type_candidate,
             "type": self.type,
             "description": self.description,
             "category": self.category,

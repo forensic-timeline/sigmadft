@@ -149,7 +149,9 @@ SigmaDFT expects CSV files in Plaso format with the following columns:
 The output format follows the extension of `-o`:
 
 - `.json`: a dictionary keyed `"0"`, `"1"`, ... with one high-level event per entry.
-- `.csv`: one row per high-level event; `keys` is stored as a JSON string.
+- `.csv`: one row per high-level event; `type_candidate` and `keys` are stored as JSON strings.
+
+Each input row produces at most one high-level event, even when several rules match it. All matching rules are listed in `type_candidate`; `type`, `description`, `category` and `keys` come from the matching rule with the highest `level` (critical > high > medium > low > informational), and on a tie from the rule processed first (atlas before sigma, then sorted rule path).
 
 Each high-level event has the following fields:
 
@@ -158,6 +160,7 @@ Each high-level event has the following fields:
 | `id` | Line number of the matching row in the input CSV |
 | `date_time_min`, `date_time_max` | Event timestamp (range) |
 | `evidence_message` | `message` of the matching row |
+| `type_candidate` | Every rule that matched the row, keyed by rule file (relative to `src/sigmadft/rules/`), each with `type`, `source` (`atlas`/`sigma`) and `level` (`null` if the rule has none) |
 | `type` | Event type (Atlas: `high_level_event.type`; Sigma: rule `title`) |
 | `description` | Event description (Atlas: filled template; Sigma: rule `description`) |
 | `category` | Rule category (Sigma: `logsource` category/service/product) |
