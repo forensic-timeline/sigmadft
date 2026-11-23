@@ -22,7 +22,7 @@ String matching follows Sigma semantics (case-insensitive unless `|cased`).
 
 import ipaddress
 import re
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 from sigma.conditions import (
     ConditionAND,
@@ -44,7 +44,7 @@ from sigma.types import (
 )
 
 from sigmadft.adapters.base import RuleAdapter
-from sigmadft.rules.Rule import DetectionDefinition, Rule
+from sigmadft.rules.Rule import DetectionDefinition, KeyDefinition, Rule
 
 Matcher = Callable[[str], bool]
 
@@ -170,6 +170,46 @@ def build_matcher(sigma_rule: SigmaRule) -> Matcher:
     return lambda text: any(m(text) for m in matchers)
 
 
+# ----------------------------------------------------------------------
+# Generic keys
+# ----------------------------------------------------------------------
+# Sigma rules have no high_level_event, so keys are chosen per EVENT (one
+# Sigma rule may match lines from different logs) from the Plaso parser,
+# falling back to the source file path (display_name). Sources are extractor
+# functions in utils/util.py, as for atlas rules.
+
+WEB_KEYS = [
+    KeyDefinition("Request_URI", "extract_http_request_uri"),
+    KeyDefinition("HTTP_Method", "extract_webshell_http_method"),
+    KeyDefinition("Source_IP", "extract_webshell_source_ip"),
+    KeyDefinition("Response_Code", "extract_webshell_response_code"),
+    KeyDefinition("User_Agent", "extract_webshell_user_agent"),
+]
+
+AUTH_KEYS = [
+    KeyDefinition("Target_User", "extract_generic_target_user"),
+    KeyDefinition("Source_IP", "extract_auth_source_ip"),
+    KeyDefinition("Service", "extract_auth_service"),
+]
+
+_WEB_PARSERS = ("text/apache_access",)
+_WEB_FILES = ("access.log", "access_log")
+_AUTH_PARSERS = ("text/syslog", "text/syslog_traditional", "systemd_journal")
+_AUTH_FILES = ("auth.log", "syslog")
+
+
+def select_generic_keys(low_level_event) -> List[KeyDefinition]:
+    """Pick the generic key profile for an event (web, auth/syslog, or none)."""
+    # plugin = "{source}-{source_long}-{parser}" (LowLevelTimeline)
+    parser = (getattr(low_level_event, "plugin", "") or "").rsplit("-", 1)[-1]
+    path = (getattr(low_level_event, "path", "") or "").lower()
+    if parser in _WEB_PARSERS or any(f in path for f in _WEB_FILES):
+        return WEB_KEYS
+    if parser in _AUTH_PARSERS or any(f in path for f in _AUTH_FILES):
+        return AUTH_KEYS
+    return []
+
+
 def _category(sigma_rule: SigmaRule) -> str:
     ls = sigma_rule.logsource
     return ls.category or ls.service or ls.product or "Unknown"
@@ -213,4 +253,5 @@ class SigmaAdapter(RuleAdapter):
             tags=[str(t) for t in (sigma_rule.tags or [])],
             is_sigma_rule=True,
             source=self.name,
+            key_selector=select_generic_keys,
         )

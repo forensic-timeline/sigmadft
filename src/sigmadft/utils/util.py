@@ -747,6 +747,33 @@ class Utils:
         return ""
 
     @staticmethod
+    def extract_generic_target_user(low_level_event: LowLevelEvent) -> str:
+        """Extract the user account an auth/syslog line is about (generic, any service).
+
+        Used by the Sigma adapter's generic keys. Patterns are tried in order;
+        for sudo the invoking user is returned (the run-as user is USER=).
+        """
+        evidence = getattr(low_level_event, 'evidence', '') or ''
+        sudo_user = Utils.extract_sudo_user(low_level_event)
+        if sudo_user:
+            return sudo_user
+        patterns = [
+            r'(?:Accepted|Failed) \S+ for (?:invalid user )?(\S+)',
+            r'Invalid user (\S+)',
+            r'Disconnected from (?:invalid |authenticating )?user (\S+)',
+            r'New session \S+ of user ([^\s.]+)',
+            r'session (?:opened|closed) for user (\S+)',
+            r'password changed for (\S+)',
+            r'(?:new user|delete user|change user)[:\s]+(?:name=)?\'?([^\s\',]+)',
+            r'\buser=([^\s,]+)',
+        ]
+        for pattern in patterns:
+            user_match = re.search(pattern, evidence)
+            if user_match:
+                return user_match.group(1)
+        return ""
+
+    @staticmethod
     def extract_login_method(low_level_event: LowLevelEvent) -> str:
         """Extract how the user logged in (password, publickey, session)"""
         evidence = getattr(low_level_event, 'evidence', '') or ''

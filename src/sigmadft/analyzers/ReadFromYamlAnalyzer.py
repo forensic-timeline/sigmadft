@@ -50,6 +50,9 @@ def CreateHighTimeline(low_level_timeline: LowLevelTimeline, rule: Rule, start_i
             # Rules from the Sigma adapter have no high_level_event: use title as type
             if rule.source == "sigma":
                 high_event.type = rule.title
+            # Generic keys chosen per event (web / auth-syslog), see adapters/sigma.py
+            if rule.key_selector is not None:
+                process_keys(high_event, low_level_event, rule.key_selector(low_level_event))
         else:
             high_event.type = rule.high_level_event.type
             # Process each key definition

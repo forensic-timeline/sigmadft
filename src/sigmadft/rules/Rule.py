@@ -279,6 +279,8 @@ class Rule:
     source: str = field(default="atlas")
     # Rule file path relative to src/sigmadft/rules/ (forward slashes), set in main.py
     rule_file: str = field(default="")
+    # Optional per-event key selector (Sigma adapter): event -> List[KeyDefinition]
+    key_selector: Optional[Callable[[Any], List[KeyDefinition]]] = field(default=None, repr=False)
 
     @classmethod
     def from_yaml(cls, yaml_data: Dict) -> "Rule":
