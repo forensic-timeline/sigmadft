@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>graph2web</title>
+  <link rel="preload" href="/static/vendor/fonts/atkinson-hyperlegible-next-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header id="topbar">
+    <span class="brand">graph2web</span>
+    <select id="db-select" aria-label="Database"></select>
+    <button id="btn-reload" type="button" title="Load the database again from Neo4j">Reload</button>
+
+    <div id="search-box">
+      <input id="search" type="search" placeholder="Search IP, user, event, type" autocomplete="off" aria-label="Search nodes">
+      <ul id="search-results" hidden></ul>
+    </div>
+
+    <div class="tools">
+      <div class="seg" role="radiogroup" aria-label="Color nodes by">
+        <button type="button" role="radio" aria-checked="true" data-mode="label">Label</button>
+        <button type="button" role="radio" aria-checked="false" data-mode="community">Community</button>
+      </div>
+      <button id="btn-layout" type="button" title="Run or stop the ForceAtlas2 layout">Run layout</button>
+      <button id="btn-fit" type="button" title="Fit the whole graph on screen">Fit</button>
+      <button id="btn-sidebar" type="button" aria-pressed="true" title="Show or hide the legend and filters">Filters</button>
+    </div>
+  </header>
+
+  <main id="layout">
+    <aside id="sidebar" aria-label="Legend and filters">
+      <section>
+        <h2>Nodes <span id="node-total" class="total"></span></h2>
+        <ul id="label-filters" class="filters"></ul>
+        <p class="hint"></p>
+      </section>
+      <section id="community-section" hidden>
+        <h2>Communities <span id="community-total" class="total"></span></h2>
+        <ul id="community-legend" class="legend"></ul>
+      </section>
+      <section>
+        <h2>Relationships <span id="edge-total" class="total"></span></h2>
+        <ul id="type-filters" class="filters"></ul>
+      </section>
+      <section>
+        <h2>Display</h2>
+        <label class="check"><input id="opt-labels" type="checkbox" checked> Node labels</label>
+        <label class="check"><input id="opt-edge-labels" type="checkbox" checked> Relationship names on hover</label>
+      </section>
+    </aside>
+
+    <section id="stage">
+      <div id="view-banner" hidden>
+        <span id="view-banner-text"></span>
+        <button id="btn-back" type="button">Back to full graph</button>
+      </div>
+      <div id="graph" aria-label="Graph view"></div>
+    </section>
+
+    <aside id="inspector" aria-label="Inspector" hidden>
+      <button id="btn-close-inspector" type="button" class="close" aria-label="Close inspector" title="Close (Esc)">&times;</button>
+      <div id="details-body"></div>
+    </aside>
+  </main>
+
+  <section id="cypher-panel" class="collapsed">
+    <div class="cypher-head">
+      <button id="btn-toggle-cypher" type="button" class="drawer-toggle" aria-expanded="false" aria-controls="cypher-body" title="Open or close the query drawer (Ctrl+K)">
+        <span class="caret" aria-hidden="true"></span>Query
+      </button>
+      <span class="readonly">read-only Cypher</span>
+      <select id="cypher-examples" aria-label="Example queries">
+        <option value="">Example queries</option>
+      </select>
+      <button id="btn-run" type="button" title="Run query (Ctrl+Enter)">Run</button>
+      <button id="btn-show-result" type="button" disabled>Show result as graph</button>
+    </div>
+    <div id="cypher-body">
+      <textarea id="cypher" spellcheck="false" rows="3" aria-label="Cypher query">MATCH (h:HighLevelEvent)-[r:FOLLOWED_BY]->(n) RETURN h, r, n</textarea>
+      <div id="cypher-result"></div>
+    </div>
+  </section>
+
+  <footer id="statusbar">
+    <span id="status" role="status"></span>
+  </footer>
+
+  <script src="/static/vendor/graphology.umd.min.js"></script>
+  <script src="/static/vendor/graphology-library.min.js"></script>
+  <script src="/static/vendor/sigma.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
