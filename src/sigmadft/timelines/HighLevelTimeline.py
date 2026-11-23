@@ -1,5 +1,6 @@
 # src/sigmadft/timelines/HighLevelTimeline.py
 
+import copy
 from datetime import datetime
 from typing import Any, Dict, List
 from sigmadft.events.HighLevelEvent import HighLevelEvent
@@ -150,3 +151,26 @@ class MergeHighLevelTimeline:
             merged.append(primary)
 
         return merged
+
+    @staticmethod
+    def group_consecutive_by_type(timeline: HighLevelTimeline) -> HighLevelTimeline:
+        """Group adjacent events (in output order) that have the same type.
+
+        Each group becomes one event copied from its first event (id,
+        evidence_message, keys, description, type_candidate, ...), with
+        date_time_max taken from the last event, plus ids (all member ids)
+        and count. The input timeline is not modified.
+        """
+        grouped_timeline = HighLevelTimeline()
+        current = None
+        for event in timeline.events:
+            if current is not None and event.type == current.type:
+                current.ids.append(event.id)
+                current.count += 1
+                current.date_time_max = event.date_time_max
+                continue
+            current = copy.copy(event)
+            current.ids = [event.id]
+            current.count = 1
+            grouped_timeline.add_event(current)
+        return grouped_timeline

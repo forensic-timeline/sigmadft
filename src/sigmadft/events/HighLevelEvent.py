@@ -20,6 +20,9 @@ class HighLevelEvent(BaseEvent):
         self.merged_id: List[int] = []                          
         self.date_time_iso: Optional[datetime] = None
         # All rules that matched this log line: {rule_file: {type, source, level}}
+        # Set by MergeHighLevelTimeline.group_consecutive_by_type (grouped output)
+        self.ids: Optional[List[Any]] = None
+        self.count: Optional[int] = None
         self.type_candidate: Dict[str, Dict[str, Optional[str]]] = {}
         # Rule that produced this event (filled by ReadFromYamlAnalyzer)
         self.rule_file: Optional[str] = None

@@ -208,11 +208,17 @@ def main():
     format_label = output_format.upper()
     print(f"Writing results to {format_label} file: {output_path} ...")
     print(f"Total events in merged timeline: {len(merged_high_timelines.events)}")
-    if output_format == "csv":
-        writer = CSVWriter(merged_high_timelines, output_path)
-    else:
-        writer = JSONWriter(merged_high_timelines, output_path)
-    writer.write()
+    writer_class = CSVWriter if output_format == "csv" else JSONWriter
+    writer_class(merged_high_timelines, output_path).write()
+
+    # Grouped version (always written): adjacent events with the same type
+    # become one event (first event + ids/count), saved as <name>_grouped.<ext>
+    grouped_high_timelines = MergeHighLevelTimeline.group_consecutive_by_type(merged_high_timelines)
+    output_file = Path(output_path)
+    grouped_output_path = str(output_file.with_name(f"{output_file.stem}_grouped{output_file.suffix}"))
+    print(f"Writing grouped results to {format_label} file: {grouped_output_path} ...")
+    print(f"Total events in grouped timeline: {len(grouped_high_timelines.events)}")
+    writer_class(grouped_high_timelines, grouped_output_path, grouped=True).write()
     output_end_time = time.time()
     print(
         f"  ✓ {format_label} output completed in {format_duration(output_end_time - output_start_time)}"

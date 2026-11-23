@@ -5,10 +5,11 @@ from sigmadft.timelines.HighLevelTimeline import HighLevelTimeline
 
 
 class JSONWriter:
-    def __init__(self, timeline: HighLevelTimeline, json_path: str):
-        """Initializes the JSONWriter class"""
+    def __init__(self, timeline: HighLevelTimeline, json_path: str, grouped: bool = False):
+        """Initializes the JSONWriter class (grouped: also write ids and count)"""
         self.timeline = timeline.events
         self.json_path = json_path
+        self.grouped = grouped
 
     def to_dict(self) -> dict:
         """Converts the timeline (list) to a dictionary"""
@@ -26,6 +27,7 @@ class JSONWriter:
                 'plugin': event.plugin,
                 'files': event.files,
                 'keys': event.keys,
+                **({'count': event.count, 'ids': event.ids} if self.grouped else {}),
                 # Dinonaktifkan: 'supporting' dan 'trigger' tidak ditulis ke output
                 # 'supporting': event.supporting,
                 # 'trigger': event.trigger.to_dict() if event.trigger else None,
