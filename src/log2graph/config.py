@@ -1,20 +1,20 @@
-# src/loggraph/config.py
+# src/log2graph/config.py
 
-"""Neo4j connection settings and graph constants for loggraph.
+"""Neo4j connection settings and graph constants for log2graph.
 
 Connection values can be overridden with environment variables
-(LOGGRAPH_NEO4J_URI, LOGGRAPH_NEO4J_USER, LOGGRAPH_NEO4J_PASSWORD) or CLI
+(LOG2GRAPH_NEO4J_URI, LOG2GRAPH_NEO4J_USER, LOG2GRAPH_NEO4J_PASSWORD) or CLI
 options. The defaults are the user's local Neo4j instance.
 """
 
 import os
 from pathlib import Path
 
-NEO4J_URI = os.environ.get("LOGGRAPH_NEO4J_URI", "bolt://localhost:7687")
-NEO4J_USER = os.environ.get("LOGGRAPH_NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.environ.get("LOGGRAPH_NEO4J_PASSWORD", "adminkami")
+NEO4J_URI = os.environ.get("LOG2GRAPH_NEO4J_URI", "bolt://localhost:7687")
+NEO4J_USER = os.environ.get("LOG2GRAPH_NEO4J_USER", "neo4j")
+NEO4J_PASSWORD = os.environ.get("LOG2GRAPH_NEO4J_PASSWORD", "adminkami")
 
-# Only databases with this prefix may be read or written by loggraph
+# Only databases with this prefix may be read or written by log2graph
 DATABASE_PREFIX = "sigmadft-"
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -39,6 +39,6 @@ def check_database_name(name: str) -> None:
     """Refuse any database outside this project (prefix 'sigmadft-')."""
     if not name.startswith(DATABASE_PREFIX) or len(name) <= len(DATABASE_PREFIX):
         raise ValueError(
-            f"Database '{name}' is not allowed: loggraph only uses databases "
+            f"Database '{name}' is not allowed: log2graph only uses databases "
             f"named '{DATABASE_PREFIX}<dataset>'."
         )

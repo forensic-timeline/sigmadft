@@ -1,9 +1,9 @@
-# src/loggraph/cli.py
+# src/log2graph/cli.py
 
-"""loggraph CLI: Plaso CSV + SigmaDFT output -> Neo4j graph.
+"""log2graph CLI: Plaso CSV + SigmaDFT output -> Neo4j graph.
 
 Example:
-    PYTHONPATH=src python -m loggraph -i dataset/linux/sample.csv \\
+    PYTHONPATH=src python -m log2graph -i dataset/linux/sample.csv \\
         -d sigmadft-sample -s results/linux/all_decoded_sample.json --reset
 """
 
@@ -16,8 +16,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, List
 
-from loggraph import config
-from loggraph.extractor import Extractor, GraphRecord
+from log2graph import config
+from log2graph.extractor import Extractor, GraphRecord
 
 
 def read_records(csv_path: str, extractor: Extractor) -> List[GraphRecord]:
@@ -50,7 +50,7 @@ def print_stats(title: str, stats: Dict[str, int]) -> None:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog="loggraph", description=__doc__,
+    parser = argparse.ArgumentParser(prog="log2graph", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("-i", "--input", required=True, help="Plaso timeline CSV")
     parser.add_argument("-d", "--database", help="Neo4j database (must start with 'sigmadft-')")
@@ -96,7 +96,7 @@ def main(argv=None) -> int:
         print("Dry run: Neo4j not touched.")
         return 0
 
-    from loggraph.writer import GraphWriter
+    from log2graph.writer import GraphWriter
     writer = GraphWriter(args.uri, args.user, args.password, args.database)
     try:
         existing = writer.count_nodes()

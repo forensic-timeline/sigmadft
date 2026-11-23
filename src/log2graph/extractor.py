@@ -1,4 +1,4 @@
-# src/loggraph/extractor.py
+# src/log2graph/extractor.py
 
 """Turn Plaso CSV rows into graph records using YAML extraction templates.
 
@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
-from loggraph.config import ENTITY_KEYS, EVENT_LABELS
+from log2graph.config import ENTITY_KEYS, EVENT_LABELS
 
 # Plaso CSV columns
 COLUMNS = ["datetime", "timestamp_desc", "source", "source_long",

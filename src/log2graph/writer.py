@@ -1,6 +1,6 @@
-# src/loggraph/writer.py
+# src/log2graph/writer.py
 
-"""Write loggraph records and SigmaDFT high-level events to Neo4j.
+"""Write log2graph records and SigmaDFT high-level events to Neo4j.
 
 All queries run on one database whose name must start with 'sigmadft-'
 (checked in __init__). Labels and relation types are inserted into Cypher
@@ -14,8 +14,8 @@ from typing import Any, Dict, Iterable, List
 
 from neo4j import GraphDatabase
 
-from loggraph.config import BATCH_SIZE, ENTITY_KEYS, check_database_name
-from loggraph.extractor import GraphRecord
+from log2graph.config import BATCH_SIZE, ENTITY_KEYS, check_database_name
+from log2graph.extractor import GraphRecord
 
 NODE_KEYS = {"Event": "event_id", "HighLevelEvent": "hle_id", **ENTITY_KEYS}
 
@@ -71,7 +71,7 @@ class GraphWriter:
 
     def ensure_constraints(self) -> None:
         for label, key in NODE_KEYS.items():
-            name = f"loggraph_{label.lower()}_{key}"
+            name = f"log2graph_{label.lower()}_{key}"
             self._run(f"CREATE CONSTRAINT {name} IF NOT EXISTS "
                       f"FOR (n:{label}) REQUIRE n.{key} IS UNIQUE")
 
