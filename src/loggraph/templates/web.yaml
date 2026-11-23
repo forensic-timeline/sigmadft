@@ -1,0 +1,36 @@
+# Apache/Nginx access log (Plaso parser text/apache_access)
+# Example message:
+#   http_request: GET /?p=5 HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1
+#   http_request: POST /verifyLogin HTTP/1.1 from: 243.23.54.175 code: 200 referer: https://71.34.77.74:8090/ user_agent: Mozilla/5.0 ...
+
+log_type: web
+order: 10
+event_label: HTTPRequest
+
+detect:                       # any parser OR any filename substring
+  parser_equals: [text/apache_access]
+  filename_contains: [access.log, access_log]
+
+patterns:                     # tried in order, first match wins
+  http_request:
+    regex: 'http_request:\s+(\S+)\s+(\S+)\s+(\S+)\s+from:\s+(\S+)\s+code:\s+(\d+)(?:\s+referer:\s+(\S+))?(?:\s+user_agent:\s+(.+?))?\s*$'
+    fields:
+      method: 1
+      uri: 2
+      protocol: 3
+      source_ip: 4
+      status_code: {group: 5, transform: int}
+      referer: 6
+      user_agent: 7
+      page: {group: 2, transform: strip_query}
+    relations:
+      - {from: {IPAddress: source_ip}, type: REQUEST, to: event}
+      - {from: event, type: TO_PAGE, to: {Page: page}}
+      - {from: event, type: WITH_UA, to: {UserAgent: user_agent}}
+
+# Link to entities already known from OTHER rows (no new node is created):
+# a token of the field equal to an existing key, e.g. decoded web shell
+# payload ["./wphashcrack.sh", ..., "-u", "phopkins"] -> User phopkins
+# (users come from auth.log). Same idea as reconsgat find_matching_username.
+known_entity_relations:
+  - {field: decoded_payload, type: RELATED_TO, to: User}

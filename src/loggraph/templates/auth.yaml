@@ -1,0 +1,81 @@
+# auth.log (Plaso parser text/syslog_traditional, text/syslog, systemd_journal)
+# Example messages:
+#   [sudo] phopkins : TTY=pts/1 ; PWD=/var/www/... ; USER=root ; COMMAND=/bin/cat /etc/shadow
+#   [sshd] [943610]: Accepted password for root from 243.23.54.175 port 37190 ssh2
+#   [systemd-logind  pid: 623] New session 44433 of user root.
+#   [systemd] pam_unix(systemd-user:session): session opened for user phopkins by (uid=0)
+
+log_type: auth
+order: 20
+event_label: AuthEvent        # label for lines matching one of the patterns
+fallback_label: SystemEvent   # label for other lines of the file (dbus, debug, ...)
+
+detect:
+  filename_contains: [auth.log, auth_log]
+
+# Extracted from every line of this log type
+fields:
+  service: '^\[([^\s\]]+)'
+relations:
+  - {from: event, type: VIA_SERVICE, to: {Service: service}}
+
+patterns:
+  sudo:
+    regex: '(\S+)\s+:\s+TTY=([^\s;]+)\s*;\s*PWD=([^;]+?)\s*;\s*USER=([^\s;]+)\s*;\s*COMMAND=(.+?)\s*$'
+    fields: {action: {value: sudo}, user: 1, tty: 2, pwd: 3, run_as: 4, command: 5}
+    relations:
+      - {from: {User: user}, type: PERFORMED, to: event}
+      - {from: event, type: RUN_AS, to: {User: run_as}}
+
+  ssh_login:
+    regex: '(Accepted|Failed)\s+(\S+)\s+for\s+(?:invalid user\s+)?(\S+)\s+from\s+(\S+)\s+port\s+(\d+)'
+    fields: {action: {group: 1, transform: lower}, auth_method: 2, user: 3, source_ip: 4, source_port: {group: 5, transform: int}}
+    relations:
+      - {from: {IPAddress: source_ip}, type: CONNECT, to: event}
+      - {from: {User: user}, type: PERFORMED, to: event}
+
+  ssh_invalid_user:
+    regex: 'Invalid user\s+(\S+)\s+from\s+(\S+)(?:\s+port\s+(\d+))?'
+    fields: {action: {value: invalid_user}, user: 1, source_ip: 2, source_port: {group: 3, transform: int}}
+    relations:
+      - {from: {IPAddress: source_ip}, type: CONNECT, to: event}
+      - {from: {User: user}, type: PERFORMED, to: event}
+
+  ssh_disconnected_user:
+    regex: 'Disconnected from (?:invalid |authenticating )?user\s+(\S+)\s+(\S+)\s+port\s+(\d+)'
+    fields: {action: {value: disconnected}, user: 1, source_ip: 2, source_port: {group: 3, transform: int}}
+    relations:
+      - {from: {IPAddress: source_ip}, type: CONNECT, to: event}
+      - {from: {User: user}, type: PERFORMED, to: event}
+
+  ssh_connection:
+    regex: '(Connection closed|Received disconnect|Disconnected) (?:by|from)\s+(?:authenticating user\s+(\S+)\s+)?(\d{1,3}(?:\.\d{1,3}){3})\s+port\s+(\d+)'
+    fields: {action: {group: 1, transform: lower}, user: 2, source_ip: 3, source_port: {group: 4, transform: int}}
+    relations:
+      - {from: {IPAddress: source_ip}, type: CONNECT, to: event}
+      - {from: {User: user}, type: PERFORMED, to: event}
+
+  auth_failure:
+    regex: 'authentication failure;.*?rhost=(\S*)(?:\s+user=(\S+))?'
+    fields: {action: {value: auth_failure}, source_ip: 1, user: 2}
+    relations:
+      - {from: {IPAddress: source_ip}, type: CONNECT, to: event}
+      - {from: {User: user}, type: PERFORMED, to: event}
+
+  new_session:
+    regex: 'New session\s+(\S+)\s+of user\s+([^\s.]+)'
+    fields: {action: {value: new_session}, session_id: 1, user: 2}
+    relations:
+      - {from: {User: user}, type: PERFORMED, to: event}
+
+  pam_session:
+    regex: 'session (opened|closed) for user\s+(\S+)'
+    fields: {action: {group: 1, transform: session}, user: 2}
+    relations:
+      - {from: {User: user}, type: PERFORMED, to: event}
+
+  password_change:
+    regex: 'password changed for\s+(\S+)'
+    fields: {action: {value: password_changed}, user: 1}
+    relations:
+      - {from: {User: user}, type: PERFORMED, to: event}

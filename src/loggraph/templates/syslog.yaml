@@ -1,0 +1,16 @@
+# Other syslog files (syslog, messages, ...): service only.
+# Example message:
+#   [dbus-daemon  pid: 898] [system] Reloaded configuration
+
+log_type: syslog
+order: 30
+event_label: SystemEvent
+
+detect:
+  parser_equals: [text/syslog, text/syslog_traditional, systemd_journal]
+  filename_contains: [syslog, messages]
+
+fields:
+  service: '^\[([^\s\]]+)'
+relations:
+  - {from: event, type: VIA_SERVICE, to: {Service: service}}
