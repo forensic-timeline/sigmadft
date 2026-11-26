@@ -11,11 +11,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from neo4j import READ_ACCESS, GraphDatabase
-from neo4j.exceptions import Neo4jError
+from neo4j.exceptions import AuthError, DriverError, Neo4jError, ServiceUnavailable
 from neo4j.graph import Node, Path as GraphPath, Relationship
 from pydantic import BaseModel
 
@@ -25,13 +25,15 @@ STATIC_DIR = Path(__file__).parent / "static"
 MAX_CYPHER_ROWS = 5000
 
 _driver = None
+# Connection used by the web app. Starts from log2graph.config (env vars) and can be
+# changed from the Settings > Database dialog; changes last until the server restarts.
+_conn = {"uri": config.NEO4J_URI, "user": config.NEO4J_USER, "password": config.NEO4J_PASSWORD}
 
 
 def driver():
     global _driver
     if _driver is None:
-        _driver = GraphDatabase.driver(config.NEO4J_URI,
-                                       auth=(config.NEO4J_USER, config.NEO4J_PASSWORD))
+        _driver = GraphDatabase.driver(_conn["uri"], auth=(_conn["user"], _conn["password"]))
     return _driver
 
 
@@ -42,9 +44,19 @@ async def lifespan(_app):
         _driver.close()
 
 
-app = FastAPI(title="graph2web", docs_url="/api/docs", openapi_url="/api/openapi.json",
+app = FastAPI(title="Log Forensic Analysis (LFA)", docs_url="/api/docs", openapi_url="/api/openapi.json",
               lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.middleware("http")
+async def revalidate_frontend(request, call_next):
+    """Make the browser revalidate the page and static files (ETag -> 304), so
+    edits to app.js/style.css show up on a normal reload instead of a stale cache."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 def _session(database: str):
@@ -116,14 +128,112 @@ def index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Browsers that ask for /favicon.ico directly get the SVG icon."""
+    return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+
+
 @app.get("/api/databases")
 def databases() -> List[str]:
     """Online databases with the project prefix only."""
-    with driver().session(database="system", default_access_mode=READ_ACCESS) as s:
+    try:
+        return _list_databases(driver())
+    except (DriverError, Neo4jError, ValueError) as e:
+        raise HTTPException(status_code=503, detail=f"Cannot connect to Neo4j at {_conn['uri']}: {_error_text(e)}")
+
+
+def _list_databases(drv) -> List[str]:
+    with drv.session(database="system", default_access_mode=READ_ACCESS) as s:
         names = [r["name"] for r in s.run(
             "SHOW DATABASES YIELD name, currentStatus "
             "WHERE currentStatus = 'online' RETURN DISTINCT name ORDER BY name")]
     return [n for n in names if n.startswith(config.DATABASE_PREFIX)]
+
+
+def _error_text(e: Exception) -> str:
+    if isinstance(e, AuthError):
+        return "wrong username or password"
+    if isinstance(e, ServiceUnavailable):
+        return "server not reachable (is Neo4j running, and is the URI right?)"
+    return getattr(e, "message", None) or str(e) or type(e).__name__
+
+
+# ----------------------------------------------------------------------
+# Connection settings (Settings > Database)
+# ----------------------------------------------------------------------
+
+class ConnectionRequest(BaseModel):
+    uri: str
+    user: str
+    password: Optional[str] = None  # empty/None = keep the current password
+
+
+def _local_only(request: Request) -> None:
+    """Changing the connection is allowed only from this machine, even with --host 0.0.0.0."""
+    host = request.client.host if request.client else ""
+    if host not in ("127.0.0.1", "::1", "localhost"):
+        raise HTTPException(status_code=403, detail="Connection settings can only be changed from localhost.")
+
+
+_URI_SCHEMES = {"bolt", "bolt+s", "bolt+ssc", "neo4j", "neo4j+s", "neo4j+ssc"}
+
+
+def _candidate(req: ConnectionRequest) -> Dict[str, str]:
+    uri, user = req.uri.strip(), req.user.strip()
+    if not uri or not user:
+        raise HTTPException(status_code=400, detail="URI and username are required.")
+    scheme = uri.split("://", 1)[0] if "://" in uri else ""
+    if scheme not in _URI_SCHEMES:
+        raise HTTPException(status_code=400, detail="URI must look like bolt://host:7687 or neo4j://host:7687 "
+                                                    "(schemes: " + ", ".join(sorted(_URI_SCHEMES)) + ").")
+    return {"uri": uri, "user": user, "password": req.password or _conn["password"]}
+
+
+def _try_connection(conn: Dict[str, str]):
+    """Open a driver for conn and list the project databases; returns (driver, databases)."""
+    try:
+        # Short timeouts so a wrong host/port fails in seconds, not after the default ~30 s
+        drv = GraphDatabase.driver(conn["uri"], auth=(conn["user"], conn["password"]),
+                                   connection_timeout=5.0, connection_acquisition_timeout=5.0)
+    except (DriverError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid URI: {_error_text(e)}")
+    try:
+        drv.verify_connectivity()
+        return drv, _list_databases(drv)
+    except (DriverError, Neo4jError) as e:
+        drv.close()
+        raise HTTPException(status_code=400, detail=f"Cannot connect to {conn['uri']}: {_error_text(e)}")
+
+
+@app.get("/api/connection")
+def get_connection() -> Dict[str, Any]:
+    """Current connection, without the password."""
+    return {"uri": _conn["uri"], "user": _conn["user"], "has_password": bool(_conn["password"]),
+            "database_prefix": config.DATABASE_PREFIX}
+
+
+@app.post("/api/connection/test")
+def test_connection(req: ConnectionRequest, request: Request) -> Dict[str, Any]:
+    """Try the given settings without applying them."""
+    _local_only(request)
+    drv, dbs = _try_connection(_candidate(req))
+    drv.close()
+    return {"ok": True, "databases": dbs}
+
+
+@app.post("/api/connection")
+def set_connection(req: ConnectionRequest, request: Request) -> Dict[str, Any]:
+    """Apply new settings after a successful test; the old driver is closed."""
+    global _driver
+    _local_only(request)
+    conn = _candidate(req)
+    drv, dbs = _try_connection(conn)
+    old, _driver = _driver, drv
+    _conn.update(conn)
+    if old is not None:
+        old.close()
+    return {"ok": True, "databases": dbs}
 
 
 @app.get("/api/stats")

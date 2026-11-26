@@ -11,17 +11,22 @@
 @font-face { font-family: "JetBrains Mono"; font-weight: 500; font-display: swap;
   src: url("/static/vendor/fonts/jetbrains-mono-500.woff2") format("woff2"); }
 
+/* Light is the default theme; dark applies with <html data-theme="dark">.
+   Graph (WebGL) colors are in app.js THEMES, validated per surface. */
 :root {
   /* surfaces */
-  --canvas: #1a1a19;      /* graph background (node palette validated on it) */
-  --panel: #212120;       /* sidebar, inspector, drawers */
-  --raised: #2a2a28;      /* inputs, hover */
-  --line: #323230;        /* dividers */
+  --canvas: #fcfcfb;      /* graph background (light node palette validated on it) */
+  --panel: #f4f4f1;       /* sidebar, inspector, drawers */
+  --raised: #ffffff;      /* inputs, hover */
+  --line: #dcdbd5;        /* dividers */
   /* ink (also the only "active" color: no accent hue) */
-  --ink: #f0efec;
-  --ink-soft: #b4b3ab;
-  --ink-faint: #8a8984;
-  --danger: #e66767;
+  --ink: #0b0b0b;
+  --ink-soft: #52514e;
+  --ink-faint: #6f6e69;
+  --danger: #c62f2f;
+  /* time histogram */
+  --hist-off: #d6d5cf;
+  --brush: rgba(11, 11, 11, 0.06);
 
   --ui: "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
@@ -31,10 +36,23 @@
   --fs-md: 13px;
   --fs-lg: 16px;
 
-  color-scheme: dark;
+  color-scheme: light;
   font-family: var(--ui);
   font-size: var(--fs-md);
   line-height: 1.4;
+}
+:root[data-theme="dark"] {
+  --canvas: #1a1a19;      /* graph background (dark node palette validated on it) */
+  --panel: #212120;
+  --raised: #2a2a28;
+  --line: #323230;
+  --ink: #f0efec;
+  --ink-soft: #b4b3ab;
+  --ink-faint: #8a8984;
+  --danger: #e66767;
+  --hist-off: #4a4a47;
+  --brush: rgba(240, 239, 236, 0.07);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -56,7 +74,7 @@ button, select, input, textarea {
   font: inherit; color: var(--ink); background: var(--raised);
   border: 1px solid var(--line); border-radius: 4px;
 }
-button { padding: 4px 10px; cursor: pointer; }
+button { padding: 4px 10px; cursor: pointer; white-space: nowrap; }
 button:hover:not(:disabled), select:hover { border-color: var(--ink-faint); }
 button:disabled { color: var(--ink-faint); cursor: default; }
 button[aria-pressed="true"], button.active { border-color: var(--ink); }
@@ -69,6 +87,10 @@ input[type="checkbox"] { accent-color: var(--ink); margin: 0; }
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line);
 }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 28px; padding: 0; color: var(--ink-soft); }
+.icon-btn:hover:not(:disabled), .icon-btn[aria-pressed="true"] { color: var(--ink); }
+.icon-btn svg { display: block; }
+.case-label { color: var(--ink-soft); margin-right: -2px; }
 .brand { font-size: var(--fs-lg); font-weight: 700; margin-right: 8px; letter-spacing: -0.01em; }
 .tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
@@ -98,6 +120,46 @@ input[type="checkbox"] { accent-color: var(--ink); margin: 0; }
 #sidebar, #inspector { overflow: auto; background: var(--panel); min-height: 0; }
 #sidebar { padding: 12px; border-right: 1px solid var(--line); }
 #sidebar section + section { margin-top: 18px; }
+/* sidebar is a column: the theme switch is always its last row, pushed to the bottom
+   when the sections are short, and after them (reached by scrolling) when they are long */
+#sidebar { display: flex; flex-direction: column; }
+#sidebar > section:last-of-type { margin-bottom: 18px; }
+.sidebar-foot {
+  flex: none; margin: auto -12px -12px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--panel); border-top: 1px solid var(--line); color: var(--ink-soft);
+}
+.menu-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0 0; color: var(--ink); }
+.settings h2 { margin-bottom: 4px; }
+.menu-item {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 8px;
+  width: calc(100% + 8px); margin: 0 -4px; padding: 4px; text-align: left;
+  background: transparent; border-color: transparent; color: var(--ink);
+}
+.menu-item:hover:not(:disabled) { background: var(--raised); border-color: transparent; }
+.menu-sub { color: var(--ink-faint); font-size: var(--fs-xs); text-align: right;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Settings > Database dialog */
+#db-dialog {
+  width: min(420px, calc(100vw - 32px)); padding: 16px 18px; color: var(--ink);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+}
+#db-dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+#db-dialog h2 { font-size: var(--fs-lg); margin-bottom: 4px; }
+#db-dialog .hint { max-width: none; margin: 0 0 12px; }
+#db-dialog code { font-family: var(--mono); font-size: var(--fs-xs); }
+#db-form label { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; color: var(--ink-soft); font-size: var(--fs-sm); }
+#db-form input { font-size: var(--fs-md); }
+#db-form input[aria-invalid="true"] { border-color: var(--danger); }
+.db-result { min-height: 1.4em; margin: 2px 0 10px; font-size: var(--fs-sm); color: var(--ink-soft); }
+.db-result.ok { color: var(--ink); }
+.db-result.error { color: var(--danger); }
+.dialog-actions { display: flex; gap: 8px; align-items: center; }
+.dialog-actions .spacer { flex: 1; }
+button.primary { background: var(--ink); color: var(--canvas); border-color: var(--ink); font-weight: 600; }
+button.primary:hover:not(:disabled) { opacity: 0.88; border-color: var(--ink); }
 #inspector { position: relative; padding: 14px 16px; border-left: 1px solid var(--line); }
 
 /* filter rows: the whole row toggles; a thin bar shows each share */
@@ -127,6 +189,39 @@ input[type="checkbox"] { accent-color: var(--ink); margin: 0; }
                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .legend .count { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
+/* collapsible sidebar sections: Time range (open by default) and Filter view (closed) */
+.section-toggle {
+  display: flex; align-items: center; gap: 7px; width: calc(100% + 8px); padding: 2px 4px; margin: -2px -4px;
+  font: inherit; font-weight: 600; text-align: left; background: transparent; border-color: transparent;
+}
+.section-toggle:hover:not(:disabled) { border-color: transparent; background: var(--raised); }
+.section-toggle[aria-expanded="true"] .caret { transform: rotate(90deg); }
+.section-toggle.active { border-color: transparent; }
+.section-toggle.active .total { color: var(--ink); font-weight: 600; }
+#time-panel { margin-top: 8px; }
+#view-panel { margin-top: 10px; }
+#sidebar h3 { font-size: var(--fs-sm); font-weight: 600; margin: 0 0 4px; color: var(--ink-soft); }
+.subsection + .subsection { margin-top: 14px; }
+
+/* time range: event histogram + brush, monochrome like the rest of the interface */
+#time-hist {
+  display: block; width: 100%; height: 56px; cursor: crosshair; touch-action: none;
+  background: var(--canvas); border: 1px solid var(--line); border-radius: 4px;
+}
+#time-hist .bar { fill: var(--ink-faint); }
+#time-hist.has-range .bar { fill: var(--hist-off); }
+#time-hist.has-range .bar.in { fill: var(--ink); }
+#time-hist .brush { fill: var(--brush); stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.time-axis { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px;
+             color: var(--ink-faint); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.time-row { display: flex; gap: 6px; margin-top: 8px; }
+.time-row button { flex: 1; padding: 3px 6px; font-size: var(--fs-sm); }
+.time-inputs label { display: grid; gap: 2px; margin-top: 8px; color: var(--ink-soft); font-size: var(--fs-sm); }
+.time-inputs input { width: 100%; font-variant-numeric: tabular-nums; }
+.time-inputs input::placeholder { color: var(--ink-faint); }
+.time-inputs input[aria-invalid="true"] { border-color: var(--danger); }
+#time-hint.error { color: var(--danger); }
+
 /* graph stage */
 #stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 #graph { position: absolute; inset: 0; background: var(--canvas); }
@@ -134,6 +229,14 @@ input[type="checkbox"] { accent-color: var(--ink); margin: 0; }
   position: absolute; z-index: 5; top: 10px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 12px; align-items: center; padding: 6px 8px 6px 12px; white-space: nowrap;
   background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+}
+
+/* communities legend: floats over the graph's right edge (left of the inspector when it is open) */
+#community-section {
+  position: absolute; z-index: 5; top: 10px; right: 10px; width: 260px;
+  max-height: calc(100% - 20px); overflow: auto; padding: 10px 10px 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
 /* inspector */
@@ -144,6 +247,7 @@ input[type="checkbox"] { accent-color: var(--ink); margin: 0; }
 .close:hover { color: var(--ink); }
 .kind { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); font-size: var(--fs-sm); margin: 0 32px 4px 0; }
 .title { font-size: var(--fs-lg); font-weight: 700; line-height: 1.3; margin: 0 32px 12px 0; word-break: break-word; }
+.pinned { color: var(--ink-faint); font-size: var(--fs-sm); margin: -8px 32px 12px 0; }
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0 0 14px; }
 .facts dt { color: var(--ink-faint); }
 .facts dd { margin: 0; word-break: break-word; font-variant-numeric: tabular-nums; }

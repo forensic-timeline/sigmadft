@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Simple graph: four nodes, edges in ink; node colors from the light palette (label slots) -->
+  <style>
+    .e { stroke: #3d3c39; stroke-width: 2.2; stroke-linecap: round; }
+    .r { stroke: #fcfcfb; stroke-width: 1.6; }
+    @media (prefers-color-scheme: dark) {
+      .e { stroke: #d6d5cf; }
+      .r { stroke: #1a1a19; }
+    }
+  </style>
+  <line class="e" x1="8" y1="9" x2="22" y2="7"/>
+  <line class="e" x1="8" y1="9" x2="13" y2="24"/>
+  <line class="e" x1="22" y1="7" x2="13" y2="24"/>
+  <line class="e" x1="13" y1="24" x2="26" y2="23"/>
+  <circle class="r" cx="8" cy="9" r="5" fill="#2a78d6"/>
+  <circle class="r" cx="22" cy="7" r="4" fill="#eb6834"/>
+  <circle class="r" cx="13" cy="24" r="5.5" fill="#6250d6"/>
+  <circle class="r" cx="26" cy="23" r="3.5" fill="#1baf7a"/>
+</svg>

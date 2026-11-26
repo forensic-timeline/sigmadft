@@ -3,14 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>graph2web</title>
+  <title>Log Forensic Analysis (LFA)</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="/static/vendor/fonts/atkinson-hyperlegible-next-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/style.css">
+  <script>
+    // Apply the saved theme before first paint (default light)
+    document.documentElement.dataset.theme = localStorage.getItem("graph2web.theme") === "dark" ? "dark" : "light";
+  </script>
 </head>
 <body>
   <header id="topbar">
-    <span class="brand">graph2web</span>
-    <select id="db-select" aria-label="Database"></select>
+    <button id="btn-sidebar" type="button" class="icon-btn" aria-pressed="true" aria-label="Show or hide the sidebar"
+            title="Show or hide the sidebar (time range and filters)">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><line x1="6" y1="2.75" x2="6" y2="13.25"/>
+      </svg>
+    </button>
+    <span class="brand">Log Forensic Analysis (LFA)</span>
+    <label class="case-label" for="db-select">Case:</label>
+    <select id="db-select"></select>
     <button id="btn-reload" type="button" title="Load the database again from Neo4j">Reload</button>
 
     <div id="search-box">
@@ -19,36 +31,75 @@
     </div>
 
     <div class="tools">
-      <div class="seg" role="radiogroup" aria-label="Color nodes by">
+      <div id="color-mode" class="seg" role="radiogroup" aria-label="Color nodes by">
         <button type="button" role="radio" aria-checked="true" data-mode="label">Label</button>
         <button type="button" role="radio" aria-checked="false" data-mode="community">Community</button>
       </div>
       <button id="btn-layout" type="button" title="Run or stop the ForceAtlas2 layout">Run layout</button>
       <button id="btn-fit" type="button" title="Fit the whole graph on screen">Fit</button>
-      <button id="btn-sidebar" type="button" aria-pressed="true" title="Show or hide the legend and filters">Filters</button>
     </div>
   </header>
 
   <main id="layout">
     <aside id="sidebar" aria-label="Legend and filters">
-      <section>
-        <h2>Nodes <span id="node-total" class="total"></span></h2>
-        <ul id="label-filters" class="filters"></ul>
-        <p class="hint"></p>
+      <section id="time-section">
+        <h2><button id="btn-time" type="button" class="section-toggle" aria-expanded="true" aria-controls="time-panel"
+                    title="Show or hide the time range filter"><span class="caret" aria-hidden="true"></span>Time range <span id="time-total" class="total"></span></button></h2>
+        <div id="time-panel">
+          <div id="time-body">
+            <svg id="time-hist" viewBox="0 0 224 56" preserveAspectRatio="none" role="img"
+                 aria-label="Events over time. Drag to select a time range, click a bar to select it."></svg>
+            <div class="time-axis"><span id="time-axis-from"></span><span id="time-axis-to"></span></div>
+            <div class="time-row">
+              <button id="btn-time-zoom" type="button" title="Show only the selected range on the chart" disabled>Zoom to range</button>
+              <button id="btn-time-full" type="button" title="Show the whole time span on the chart" disabled>Full span</button>
+            </div>
+            <div class="time-inputs">
+              <label>From (UTC)<input id="time-from" type="text" placeholder="yyyy/mm/dd hh:mm:ss" autocomplete="off" spellcheck="false"></label>
+              <label>To (UTC)<input id="time-to" type="text" placeholder="yyyy/mm/dd hh:mm:ss" autocomplete="off" spellcheck="false"></label>
+            </div>
+            <div class="time-row">
+              <button id="btn-time-apply" type="button" title="Apply the typed range (Enter)">Apply</button>
+              <button id="btn-time-clear" type="button" title="Show all times again" disabled>Clear</button>
+            </div>
+          </div>
+          <p id="time-hint" class="hint"></p>
+        </div>
       </section>
-      <section id="community-section" hidden>
-        <h2>Communities <span id="community-total" class="total"></span></h2>
-        <ul id="community-legend" class="legend"></ul>
+      <section id="view-section">
+        <h2><button type="button" class="section-toggle" aria-expanded="false" aria-controls="view-panel"><span class="caret" aria-hidden="true"></span>Filter view</button></h2>
+        <div id="view-panel" hidden>
+          <div class="subsection">
+            <h3>Nodes <span id="node-total" class="total"></span></h3>
+            <ul id="label-filters" class="filters"></ul>
+            <p id="node-hint" class="hint"></p>
+          </div>
+          <div class="subsection">
+            <h3>Relationships <span id="edge-total" class="total"></span></h3>
+            <ul id="type-filters" class="filters"></ul>
+          </div>
+          <div class="subsection">
+            <h3>Display</h3>
+            <label class="check"><input id="opt-labels" type="checkbox" checked> Node labels</label>
+            <label class="check"><input id="opt-edge-labels" type="checkbox" checked> Relationship names on hover</label>
+          </div>
+        </div>
       </section>
-      <section>
-        <h2>Relationships <span id="edge-total" class="total"></span></h2>
-        <ul id="type-filters" class="filters"></ul>
-      </section>
-      <section>
-        <h2>Display</h2>
-        <label class="check"><input id="opt-labels" type="checkbox" checked> Node labels</label>
-        <label class="check"><input id="opt-edge-labels" type="checkbox" checked> Relationship names on hover</label>
-      </section>
+      <div class="sidebar-foot">
+        <nav class="settings" aria-label="Settings">
+          <h2>Settings</h2>
+          <button id="btn-settings-db" type="button" class="menu-item" aria-haspopup="dialog" aria-controls="db-dialog">
+            <span class="menu-name">Database</span><span id="settings-db-sub" class="menu-sub"></span><span class="caret" aria-hidden="true"></span>
+          </button>
+          <div class="menu-row">
+            <span class="menu-name" id="theme-label">Theme</span>
+            <div id="theme-mode" class="seg" role="radiogroup" aria-labelledby="theme-label">
+              <button type="button" role="radio" aria-checked="true" data-theme="light">Light</button>
+              <button type="button" role="radio" aria-checked="false" data-theme="dark">Dark</button>
+            </div>
+          </div>
+        </nav>
+      </div>
     </aside>
 
     <section id="stage">
@@ -57,6 +108,10 @@
         <button id="btn-back" type="button">Back to full graph</button>
       </div>
       <div id="graph" aria-label="Graph view"></div>
+      <section id="community-section" aria-label="Communities legend" hidden>
+        <h2>Communities <span id="community-total" class="total"></span></h2>
+        <ul id="community-legend" class="legend"></ul>
+      </section>
     </section>
 
     <aside id="inspector" aria-label="Inspector" hidden>
@@ -82,6 +137,24 @@
       <div id="cypher-result"></div>
     </div>
   </section>
+
+  <dialog id="db-dialog" aria-labelledby="db-dialog-title">
+    <form id="db-form" novalidate>
+      <h2 id="db-dialog-title">Database connection</h2>
+      <p class="hint">Neo4j server used by this app. Access stays read-only, and only databases named
+        <code id="db-prefix">sigmadft-*</code> are listed. A change lasts until the server restarts.</p>
+      <label>URI<input id="db-uri" type="text" required autocomplete="off" spellcheck="false" placeholder="bolt://localhost:7687"></label>
+      <label>Username<input id="db-user" type="text" required autocomplete="username" spellcheck="false"></label>
+      <label>Password<input id="db-pass" type="password" autocomplete="current-password" placeholder="Leave empty to keep the current password"></label>
+      <p id="db-result" class="db-result" role="status"></p>
+      <div class="dialog-actions">
+        <button id="btn-db-test" type="button">Test connection</button>
+        <span class="spacer"></span>
+        <button id="btn-db-cancel" type="button">Cancel</button>
+        <button id="btn-db-save" type="submit" class="primary">Save and reconnect</button>
+      </div>
+    </form>
+  </dialog>
 
   <footer id="statusbar">
     <span id="status" role="status"></span>
