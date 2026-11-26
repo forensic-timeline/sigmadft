@@ -110,6 +110,72 @@ function setStatus(text, isError = false) {
   el.classList.toggle("error", isError);
 }
 
+// ---------------------------------------------------------------------------
+// Loading indicator: Query -> Download -> Build -> Layout, then "Ready"
+// ---------------------------------------------------------------------------
+const loader = { t0: 0, clock: null, hideTimer: null, loading: false };
+
+function loaderTick() {
+  $("loader-time").textContent = `${((performance.now() - loader.t0) / 1000).toFixed(1)} s`;
+}
+
+// step: index into the steps list (null hides the list, used for a manual layout);
+// progress: 0..1, or null when the amount of work is unknown
+function showLoader(step, text, progress = null) {
+  clearTimeout(loader.hideTimer);
+  const box = $("loader");
+  if (box.hidden || box.classList.contains("done")) {
+    loader.t0 = performance.now();
+    clearInterval(loader.clock);
+    loader.clock = setInterval(loaderTick, 100);
+  }
+  box.hidden = false;
+  box.classList.remove("done");
+  box.classList.toggle("indeterminate", progress === null);
+  $("loader-bar").style.width = progress === null ? "" : `${Math.round(progress * 100)}%`;
+  $("loader-text").textContent = text;
+  const steps = $("loader-steps");
+  steps.hidden = step === null;
+  [...steps.children].forEach((li, i) => {
+    li.classList.toggle("done", step !== null && i < step);
+    li.classList.toggle("current", i === step);
+  });
+  // The old graph stays visible but dimmed while new data is on its way
+  $("stage").classList.toggle("busy", step !== null && step < 3);
+  loaderTick();
+}
+
+function finishLoader(text) {
+  const box = $("loader");
+  if (box.hidden) return;
+  clearInterval(loader.clock);
+  loaderTick();
+  box.classList.remove("indeterminate");
+  box.classList.add("done");
+  $("loader-text").textContent = text;
+  [...$("loader-steps").children].forEach((li) => { li.classList.add("done"); li.classList.remove("current"); });
+  $("stage").classList.remove("busy");
+  loader.hideTimer = setTimeout(() => { box.hidden = true; box.classList.remove("done"); }, 4000);
+}
+
+// End of a case load: the graph is fully loaded and arranged
+function finishLoaded() {
+  loader.loading = false;
+  const g = state.graph;
+  finishLoader(`Ready: ${g.order.toLocaleString()} nodes, ${g.size.toLocaleString()} relationships`);
+}
+
+function hideLoader() {
+  clearInterval(loader.clock);
+  clearTimeout(loader.hideTimer);
+  $("loader").hidden = true;
+  $("stage").classList.remove("busy");
+  loader.loading = false;
+}
+
+const nextPaint = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)));
+const megabytes = (n) => `${(n / 1048576).toFixed(1)} MB`;
+
 async function api(path, options) {
   const res = await fetch(path, options);
   if (!res.ok) {
@@ -216,12 +282,13 @@ function buildGraph(data) {
     const deg = graph.degree(id);
     const base = BASE_SIZE[a.nodeLabel] || (a.isEvent ? 4 : 5);
     graph.mergeNodeAttributes(id, {
-      size: Math.min(base + 1.6 * Math.log2(1 + deg), 22),
+      baseSize: Math.min(base + 1.6 * Math.log2(1 + deg), 22),
       type: a.isEvent && a.detected ? "border" : "circle",
       borderColor: T.ring,
     });
   });
   state.graph = graph;
+  applySizes();
   computeCommunities();
   applyColors();
   initTime();
@@ -248,6 +315,24 @@ function buildGraph(data) {
   renderFilters();
   renderDetails();
   startLayout(Math.min(2500 + graph.order * 4, 20000));
+}
+
+// Node size = size from label + degree, times an automatic factor (node sizes are
+// screen pixels, so thousands of full-size nodes cover each other and every
+// relationship when the graph is fitted to the view), times the Node size slider.
+function sizeScale() {
+  const auto = Math.min(1, Math.max(0.15, Math.sqrt(1500 / Math.max(1, state.graph.order))));
+  return auto * Number($("opt-node-size").value) / 100;
+}
+
+function applySizes() {
+  const k = sizeScale();
+  state.graph.updateEachNodeAttributes((_, a) => ({ ...a, size: Math.max(1, a.baseSize * k) }), { attributes: ["size"] });
+}
+
+function showDisplayValues() {
+  $("opt-node-size-val").textContent = `${$("opt-node-size").value}%`;
+  $("opt-spacing-val").textContent = `${Number($("opt-spacing").value)}×`;
 }
 
 // Hover label in the interface's dark panel style (sigma's default is a white box)
@@ -485,16 +570,64 @@ function selectNode(id, moveCamera = true) {
 // ---------------------------------------------------------------------------
 // Layout (ForceAtlas2 in a web worker)
 // ---------------------------------------------------------------------------
+// The layout runs on a copy holding only what is shown (label, relationship and
+// time filters), so hidden hubs and relationships do not pull the shown nodes;
+// positions are copied back every frame. Hidden nodes keep their positions.
+function layoutSubgraph() {
+  const g = state.graph;
+  const sub = new graphology.MultiDirectedGraph();
+  g.forEachNode((id, a) => {
+    if (!nodeHidden(id)) sub.addNode(id, { x: a.x, y: a.y, fixed: !!a.fixed, size: a.size });
+  });
+  g.forEachEdge((id, a, s, t) => {
+    if (!state.hiddenTypes.has(a.relType) && sub.hasNode(s) && sub.hasNode(t)) sub.addDirectedEdgeWithKey(id, s, t);
+  });
+  return sub;
+}
+
+function syncLayout() {
+  const sub = state.layoutGraph;
+  if (!sub) return;
+  state.graph.updateEachNodeAttributes((id, a) => {
+    if (!sub.hasNode(id)) return a;
+    const p = sub.getNodeAttributes(id);
+    return { ...a, x: p.x, y: p.y };
+  }, { attributes: ["x", "y"] });
+}
+
 function startLayout(autoStopMs) {
   stopLayout();
   const g = state.graph;
-  if (!g || g.order < 2) return;
+  if (!g) return;
+  const sub = layoutSubgraph();
+  if (sub.order < 2) {
+    if (loader.loading) finishLoaded(); else setStatus("Layout needs at least two shown nodes");
+    return;
+  }
   // Bounds frozen by a node drag would keep the moving layout from rescaling
   if (state.renderer) state.renderer.setCustomBBox(null);
-  const settings = graphologyLibrary.layoutForceAtlas2.inferSettings(g);
-  settings.barnesHutOptimize = g.order > 2000;
-  state.layout = new graphologyLibrary.FA2Layout(g, { settings });
+  // Defaults from graphology, without strong gravity (it packs large graphs into
+  // a ball); Node spacing scales the repulsion.
+  const settings = graphologyLibrary.layoutForceAtlas2.inferSettings(sub);
+  settings.barnesHutOptimize = sub.order > 2000;
+  settings.strongGravityMode = false;
+  settings.gravity = 1;
+  settings.scalingRatio = 10 * Number($("opt-spacing").value);
+  state.layoutGraph = sub;
+  state.layout = new graphologyLibrary.FA2Layout(sub, { settings });
   state.layout.start();
+  // Indicator: the last step of a case load, or a layout started from the toolbar
+  const t0 = performance.now();
+  const progress = () => (autoStopMs ? Math.min(1, (performance.now() - t0) / autoStopMs) : null);
+  const label = loader.loading ? `Arranging layout: ${sub.order.toLocaleString()} nodes…`
+    : autoStopMs ? "Arranging layout…" : "Layout running: press Stop layout to end";
+  showLoader(loader.loading ? 3 : null, label, progress());
+  const tick = () => {
+    syncLayout();
+    if (autoStopMs) $("loader-bar").style.width = `${Math.round(progress() * 100)}%`;
+    state.layoutFrame = requestAnimationFrame(tick);
+  };
+  state.layoutFrame = requestAnimationFrame(tick);
   $("btn-layout").classList.add("active");
   $("btn-layout").textContent = "Stop layout";
   $("btn-layout").setAttribute("aria-pressed", "true");
@@ -506,7 +639,13 @@ function startLayout(autoStopMs) {
 
 function stopLayout() {
   clearTimeout(state.layoutTimer);
-  if (state.layout) { state.layout.kill(); state.layout = null; }
+  cancelAnimationFrame(state.layoutFrame);
+  if (state.layout) {
+    state.layout.kill();
+    state.layout = null;
+    if (loader.loading) finishLoaded(); else finishLoader("Layout done");
+  }
+  if (state.layoutGraph) { syncLayout(); state.layoutGraph = null; }
   $("btn-layout").classList.remove("active");
   $("btn-layout").textContent = "Run layout";
   $("btn-layout").setAttribute("aria-pressed", "false");
@@ -1188,11 +1327,55 @@ async function loadDatabases() {
     sel.replaceChildren();
     throw err;
   }
-  sel.replaceChildren(...dbs.map((d) => Object.assign(document.createElement("option"), { value: d, textContent: d })));
+  const placeholder = Object.assign(document.createElement("option"), { value: "", textContent: "Choose a case…", disabled: true });
+  sel.replaceChildren(placeholder, ...dbs.map((d) => Object.assign(document.createElement("option"), { value: d, textContent: d })));
+  sel.value = state.db && dbs.includes(state.db) ? state.db : "";
   if (dbs.length === 0) { setStatus(`No '${state.dbPrefix}*' database found`, true); return; }
+  // No case is loaded until the user picks one (a large case takes a while to load)
+  openCasePicker(dbs);
+}
+
+// ---------------------------------------------------------------------------
+// Case picker: shown when the app opens and after reconnecting to Neo4j
+// ---------------------------------------------------------------------------
+function openCasePicker(dbs) {
   const saved = localStorage.getItem("graph2web.db");
-  sel.value = dbs.includes(saved) ? saved : dbs[0];
-  await loadGraph();
+  const chosen = dbs.includes(state.db) ? state.db : dbs.includes(saved) ? saved : dbs[0];
+  const list = $("case-list");
+  list.replaceChildren(list.querySelector("legend"), ...dbs.map((db) => {
+    const label = el("label");
+    const radio = Object.assign(document.createElement("input"), { type: "radio", name: "case", value: db, checked: db === chosen });
+    const sub = el("span", "case-sub", db === saved ? "Last opened · counting…" : "Counting…");
+    label.append(radio, el("span", "case-name", db), sub);
+    // Size of each case, so a large one is not opened by surprise
+    api(`/api/stats?db=${encodeURIComponent(db)}`).then((s) => {
+      const n = (k) => (s.labels[k] || 0).toLocaleString();
+      sub.textContent = `${db === saved ? "Last opened · " : ""}${n("Event")} events, ${n("HighLevelEvent")} high-level events`;
+    }).catch(() => { sub.textContent = db === saved ? "Last opened" : ""; });
+    radio.addEventListener("dblclick", () => $("case-form").requestSubmit());
+    label.addEventListener("dblclick", () => $("case-form").requestSubmit());
+    return label;
+  }));
+  $("case-dialog").showModal();
+  const checked = list.querySelector("input:checked");
+  if (checked) checked.focus();
+}
+
+function bindCasePicker() {
+  const dialog = $("case-dialog");
+  $("case-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const picked = $("case-list").querySelector("input:checked");
+    if (!picked) return;
+    dialog.close();
+    $("db-select").value = picked.value;
+    loadGraph();
+  });
+  $("btn-case-cancel").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+  dialog.addEventListener("close", () => {
+    if (!state.db) setStatus("No case open. Choose one from Case in the top bar.");
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1280,13 +1463,24 @@ function bindDbSettings() {
 }
 
 async function loadGraph() {
+  if (!$("db-select").value) return;
   state.db = $("db-select").value;
   localStorage.setItem("graph2web.db", state.db);
   setStatus(`Loading ${state.db}…`);
+  // A newer load (another case picked meanwhile) cancels this one
+  if (state.loadAbort) state.loadAbort.abort();
+  const abort = state.loadAbort = new AbortController();
+  stopLayout();
+  loader.loading = true;
+  showLoader(0, `Querying ${state.db}…`);
   await document.fonts.ready;
   const t0 = performance.now();
   try {
-    state.fullData = await api(`/api/graph?db=${encodeURIComponent(state.db)}`);
+    const data = await fetchGraph(state.db, abort.signal);
+    showLoader(2, `Building graph: ${data.nodes.length.toLocaleString()} nodes…`);
+    await nextPaint();
+    if (abort.signal.aborted) return;
+    state.fullData = data;
     // A (re)loaded database starts without a time filter
     state.time.range = null;
     $("time-from").value = "";
@@ -1298,8 +1492,35 @@ async function loadGraph() {
       + `${state.fullData.edges.length.toLocaleString()} relationships `
       + `(${Math.round(performance.now() - t0)} ms)`);
   } catch (err) {
+    if (abort.signal.aborted) return;   // replaced by a newer load
+    hideLoader();
     setStatus(`Failed to load: ${err.message}`, true);
   }
+}
+
+// GET /api/graph with download progress (the response carries Content-Length)
+async function fetchGraph(db, signal) {
+  const res = await fetch(`/api/graph?db=${encodeURIComponent(db)}`, { signal });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { detail = (await res.json()).detail || detail; } catch (_) { /* not JSON */ }
+    throw new Error(detail);
+  }
+  const total = Number(res.headers.get("content-length")) || 0;
+  const reader = res.body.getReader();
+  const chunks = [];
+  let received = 0;
+  showLoader(1, "Downloading…", total ? 0 : null);
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    showLoader(1, `Downloading ${megabytes(received)}${total ? ` of ${megabytes(total)}` : ""}`, total ? received / total : null);
+  }
+  showLoader(2, "Reading data…");
+  await nextPaint();
+  return JSON.parse(await new Blob(chunks).text());
 }
 
 // ---------------------------------------------------------------------------
@@ -1365,6 +1586,7 @@ function init() {
   $("btn-close-inspector").addEventListener("click", clearSelection);
   bindTimeControls();
   bindDbSettings();
+  bindCasePicker();
   // Collapsible sidebar sections: each header opens/closes the panel it controls
   document.querySelectorAll("#sidebar .section-toggle").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1376,12 +1598,27 @@ function init() {
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "k" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); toggleDrawer(); return; }
-    if ($("db-dialog").open) return; // the dialog handles its own Esc
+    if ($("db-dialog").open || $("case-dialog").open) return; // dialogs handle their own Esc
     const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
     if (e.key === "Escape" && !typing) clearSelection();
   });
   $("opt-labels").addEventListener("change", (e) => state.renderer && state.renderer.setSetting("renderLabels", e.target.checked));
   $("opt-edge-labels").addEventListener("change", refresh);
+  // Display sliders, remembered between visits
+  for (const [id, key] of [["opt-node-size", "graph2web.nodeSize"], ["opt-spacing", "graph2web.spacing"]]) {
+    const saved = localStorage.getItem(key);
+    if (saved !== null) $(id).value = saved;
+    $(id).addEventListener("change", () => localStorage.setItem(key, $(id).value));
+  }
+  showDisplayValues();
+  $("opt-node-size").addEventListener("input", () => {
+    showDisplayValues();
+    if (state.graph) { applySizes(); refresh(); }
+  });
+  $("opt-spacing").addEventListener("input", showDisplayValues);
+  $("opt-spacing").addEventListener("change", () => {
+    if (state.graph) startLayout(Math.min(2500 + state.graph.order * 4, 20000));
+  });
 
   $("search").addEventListener("input", runSearch);
   $("search").addEventListener("keydown", (e) => {

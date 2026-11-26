@@ -82,6 +82,15 @@
             <h3>Display</h3>
             <label class="check"><input id="opt-labels" type="checkbox" checked> Node labels</label>
             <label class="check"><input id="opt-edge-labels" type="checkbox" checked> Relationship names on hover</label>
+            <div class="range">
+              <label for="opt-node-size">Node size</label><output id="opt-node-size-val" for="opt-node-size"></output>
+              <input id="opt-node-size" type="range" min="10" max="300" step="10" value="100">
+            </div>
+            <div class="range">
+              <label for="opt-spacing">Node spacing</label><output id="opt-spacing-val" for="opt-spacing"></output>
+              <input id="opt-spacing" type="range" min="0.25" max="5" step="0.25" value="1">
+            </div>
+            <p class="hint">Sizes shrink automatically on large graphs. Changing the spacing reruns the layout. The layout uses only the nodes and relationships shown, so press Run layout after changing the filters.</p>
           </div>
         </div>
       </section>
@@ -108,6 +117,16 @@
         <button id="btn-back" type="button">Back to full graph</button>
       </div>
       <div id="graph" aria-label="Graph view"></div>
+      <div id="loader" role="status" aria-live="polite" hidden>
+        <div class="loader-head">
+          <span id="loader-text">Loading</span>
+          <span id="loader-time" class="loader-time"></span>
+        </div>
+        <div class="loader-track"><span id="loader-bar"></span></div>
+        <ol id="loader-steps" class="loader-steps">
+          <li>Query</li><li>Download</li><li>Build</li><li>Layout</li>
+        </ol>
+      </div>
       <section id="community-section" aria-label="Communities legend" hidden>
         <h2>Communities <span id="community-total" class="total"></span></h2>
         <ul id="community-legend" class="legend"></ul>
@@ -152,6 +171,19 @@
         <span class="spacer"></span>
         <button id="btn-db-cancel" type="button">Cancel</button>
         <button id="btn-db-save" type="submit" class="primary">Save and reconnect</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="case-dialog" aria-labelledby="case-dialog-title">
+    <form id="case-form" method="dialog">
+      <h2 id="case-dialog-title">Choose a case</h2>
+      <p class="hint">Each case is one database made by log2graph. You can switch later from <strong>Case</strong> in the top bar.</p>
+      <fieldset id="case-list" class="case-list"><legend class="sr-only">Cases</legend></fieldset>
+      <div class="dialog-actions">
+        <span class="spacer"></span>
+        <button id="btn-case-cancel" type="button">Cancel</button>
+        <button id="btn-case-open" type="submit" class="primary">Open case</button>
       </div>
     </form>
   </dialog>
