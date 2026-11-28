@@ -29,8 +29,10 @@ Desktop.ini
 __MACOSX/
 
 # ===== Data eksperimen (lokal saja) =====
-/dataset/
-/results/
+/dataset/linux/
+/dataset/windows/
+/results/linux/
+/results/windows/
 *.e01
 *.dd
 *.raw

