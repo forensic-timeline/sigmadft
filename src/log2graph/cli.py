@@ -3,8 +3,8 @@
 """log2graph CLI: Plaso CSV + SigmaDFT output -> Neo4j graph.
 
 Example:
-    PYTHONPATH=src python -m log2graph -i dataset/linux/sample.csv \\
-        -d sigmadft-sample -s results/linux/all_decoded_sample.json --reset
+    PYTHONPATH=src python -m log2graph -i dataset/sample.csv \\
+        -d sigmadft-sample -s results/all_decoded_sample.json --reset
 """
 
 import argparse
@@ -16,7 +16,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, List
 
-from log2graph import config
+from log2graph import cases, config
 from log2graph.extractor import Extractor, GraphRecord
 
 
@@ -109,11 +109,16 @@ def main(argv=None) -> int:
             writer.reset()
         writer.ensure_constraints()
         print_stats(f"Written to '{args.database}':", writer.write_records(records))
+        # Case metadata (:Case node), read by the web app for analysis and export
+        writer.set_case(cases.import_props(args.database, args.input, len(records), not args.no_decode))
         if sigmadft_events is not None:
             print(f"SigmaDFT detections on events: {writer.annotate_events(sigmadft_events)} "
                   f"({args.sigmadft})")
+            writer.set_case(cases.detection_props(cases.rule_source_from_name(args.sigmadft),
+                                                  len(sigmadft_events), args.sigmadft))
         if grouped_events is not None:
             print_stats(f"High-level events ({grouped_file}):", writer.import_hle(grouped_events))
+            writer.set_case(cases.reconstruction_props(len(grouped_events), grouped_file))
     finally:
         writer.close()
     print(f"Done in {time.time() - start:.1f} s")

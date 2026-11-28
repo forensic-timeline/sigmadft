@@ -1,10 +1,13 @@
 # src/graph2web/app.py
 
-"""graph2web backend: read-only JSON API over the log2graph Neo4j databases.
+"""graph2web backend: JSON API over the log2graph Neo4j databases.
 
-Every Neo4j session is opened with READ access, so the web app can never
-modify a database, and only databases named 'sigmadft-*' are reachable
-(same rule as log2graph, shared through log2graph.config).
+Browsing (graph, stats, Cypher) opens every Neo4j session with READ access,
+so a query from the UI can never modify a database. Writing happens only in
+the case pipeline (cases.py: upload + import, anomaly detection, event
+reconstruction), whose endpoints accept requests from this machine only.
+Only databases named 'sigmadft-*' are reachable (same rule as log2graph,
+shared through log2graph.config).
 """
 
 from contextlib import asynccontextmanager
@@ -12,13 +15,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from neo4j import READ_ACCESS, GraphDatabase
 from neo4j.exceptions import AuthError, DriverError, Neo4jError, ServiceUnavailable
 from neo4j.graph import Node, Path as GraphPath, Relationship
 from pydantic import BaseModel
 
+from graph2web.cases import CaseError, Cases, get_job
 from log2graph import config
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -37,6 +41,9 @@ def driver():
     return _driver
 
 
+cases = Cases(lambda: dict(_conn), driver)
+
+
 @asynccontextmanager
 async def lifespan(_app):
     yield
@@ -44,7 +51,7 @@ async def lifespan(_app):
         _driver.close()
 
 
-app = FastAPI(title="Log Forensic Analysis (LFA)", docs_url="/api/docs", openapi_url="/api/openapi.json",
+app = FastAPI(title="SigmaDFT", docs_url="/api/docs", openapi_url="/api/openapi.json",
               lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -170,10 +177,11 @@ class ConnectionRequest(BaseModel):
 
 
 def _local_only(request: Request) -> None:
-    """Changing the connection is allowed only from this machine, even with --host 0.0.0.0."""
+    """Changing the connection or writing to a case is allowed only from this
+    machine, even with --host 0.0.0.0."""
     host = request.client.host if request.client else ""
     if host not in ("127.0.0.1", "::1", "localhost"):
-        raise HTTPException(status_code=403, detail="Connection settings can only be changed from localhost.")
+        raise HTTPException(status_code=403, detail="Only allowed from this machine (localhost).")
 
 
 _URI_SCHEMES = {"bolt", "bolt+s", "bolt+ssc", "neo4j", "neo4j+s", "neo4j+ssc"}
@@ -240,7 +248,7 @@ def set_connection(req: ConnectionRequest, request: Request) -> Dict[str, Any]:
 def stats(db: str = Query(...)) -> Dict[str, Any]:
     with _session(db) as s:
         labels = {r["l"]: r["c"] for r in s.run(
-            "MATCH (n) UNWIND labels(n) AS l RETURN l, count(*) AS c ORDER BY c DESC")}
+            "MATCH (n) WHERE NOT n:Case UNWIND labels(n) AS l RETURN l, count(*) AS c ORDER BY c DESC")}
         types = {r["t"]: r["c"] for r in s.run(
             "MATCH ()-[r]->() RETURN type(r) AS t, count(*) AS c ORDER BY c DESC")}
     return {"labels": labels, "relationships": types}
@@ -252,7 +260,7 @@ def graph(db: str = Query(...)) -> Dict[str, Any]:
     with _session(db) as s:
         nodes = [{"id": r["id"], "labels": sorted(r["labels"]),
                   "props": {k: _value(v) for k, v in r["props"].items()}}
-                 for r in s.run("MATCH (n) RETURN elementId(n) AS id, labels(n) AS labels, "
+                 for r in s.run("MATCH (n) WHERE NOT n:Case RETURN elementId(n) AS id, labels(n) AS labels, "
                                 "properties(n) AS props")]
         edges = [{"id": r["id"], "type": r["type"], "source": r["s"], "target": r["t"],
                   "props": {k: _value(v) for k, v in r["props"].items()}}
@@ -285,3 +293,72 @@ def cypher(req: CypherRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail=f"{e.code}: {e.message}")
     return {"columns": columns, "rows": rows, "truncated": truncated,
             "nodes": list(collector.nodes.values()), "edges": list(collector.edges.values())}
+
+
+# ----------------------------------------------------------------------
+# Case pipeline: upload -> graph (log2graph) -> anomaly detection ->
+# event reconstruction -> export. Long steps run as background jobs.
+# ----------------------------------------------------------------------
+
+def _case_call(fn, *args):
+    try:
+        return fn(*args)
+    except CaseError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except (DriverError, Neo4jError) as e:
+        raise HTTPException(status_code=503, detail=f"Neo4j: {_error_text(e)}")
+
+
+@app.get("/api/case")
+def case_info(db: str = Query(...)) -> Dict[str, Any]:
+    """Case metadata (:Case node: source file, stage, rule source, ...) and its running job."""
+    return _case_call(cases.case_info, db)
+
+
+@app.post("/api/cases")
+async def create_case(request: Request, name: str = Query(...), decode: bool = Query(True)) -> Dict[str, Any]:
+    """New case from a Plaso CSV sent as the raw request body: the file is saved as
+    dataset/uploads/<name>.csv, database sigmadft-<name> is created and the import
+    job (log2graph) starts. Returns {db, job}."""
+    _local_only(request)
+    try:
+        job = await cases.upload(name, decode, request.stream())
+    except CaseError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+    except (DriverError, Neo4jError) as e:
+        raise HTTPException(status_code=503, detail=f"Neo4j: {_error_text(e)}")
+    return {"db": job.db, "job": job.to_dict()}
+
+
+class DetectRequest(BaseModel):
+    rule_source: str = "all"
+
+
+@app.post("/api/cases/{db}/detect")
+def detect(db: str, req: DetectRequest, request: Request) -> Dict[str, Any]:
+    """Anomaly detection with SigmaDFT (replaces an earlier detection and its HLEs)."""
+    _local_only(request)
+    return {"job": _case_call(cases.start_detect, db, req.rule_source).to_dict()}
+
+
+@app.post("/api/cases/{db}/reconstruct")
+def reconstruct(db: str, request: Request) -> Dict[str, Any]:
+    """Event reconstruction: high-level events from the current detection."""
+    _local_only(request)
+    return {"job": _case_call(cases.start_reconstruct, db).to_dict()}
+
+
+@app.get("/api/jobs/{job_id}")
+def job_status(job_id: str) -> Dict[str, Any]:
+    return _case_call(get_job, job_id).to_dict()
+
+
+@app.get("/api/export")
+def export(db: str = Query(...), format: str = Query("json")) -> Response:
+    """Download the case in the SigmaDFT CLI output format of its current stage."""
+    filename, text = _case_call(cases.export, db, format)
+    media = "application/json" if format == "json" else "text/csv"
+    return Response(content=text, media_type=f"{media}; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})

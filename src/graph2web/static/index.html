@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Log Forensic Analysis (LFA)</title>
+  <title>SigmaDFT</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="/static/vendor/fonts/atkinson-hyperlegible-next-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/style.css">
@@ -20,10 +20,12 @@
         <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="1.5"/><line x1="6" y1="2.75" x2="6" y2="13.25"/>
       </svg>
     </button>
-    <span class="brand">Log Forensic Analysis (LFA)</span>
+    <span class="brand">SigmaDFT</span>
     <label class="case-label" for="db-select">Case:</label>
     <select id="db-select"></select>
     <button id="btn-reload" type="button" title="Load the database again from Neo4j">Reload</button>
+    <button id="btn-new-case" type="button" aria-haspopup="dialog" aria-controls="new-case-dialog"
+            title="Upload a Plaso timeline CSV as a new case">New case</button>
 
     <div id="search-box">
       <input id="search" type="search" placeholder="Search IP, user, event, type" autocomplete="off" aria-label="Search nodes">
@@ -41,7 +43,48 @@
   </header>
 
   <main id="layout">
-    <aside id="sidebar" aria-label="Legend and filters">
+    <aside id="sidebar" aria-label="Analysis, legend and filters">
+      <section id="analysis-section">
+        <h2><button id="btn-analysis" type="button" class="section-toggle" aria-expanded="true" aria-controls="analysis-panel"
+                    title="Show or hide the analysis steps"><span class="caret" aria-hidden="true"></span>Analysis <span id="analysis-total" class="total"></span></button></h2>
+        <div id="analysis-panel">
+          <p id="case-empty" class="hint">Open a case, or make one with New case.</p>
+          <div id="case-body" hidden>
+            <dl id="case-facts" class="facts case-facts"></dl>
+            <ol class="steps">
+              <li id="step-detect" class="step">
+                <h3><span class="step-mark" aria-hidden="true">1</span>Anomaly detection</h3>
+                <p id="detect-status" class="step-status"></p>
+                <div class="step-row">
+                  <label for="rule-source" class="sr-only">Rule source</label>
+                  <select id="rule-source" title="Rules used by SigmaDFT">
+                    <option value="all">All rules</option>
+                    <option value="atlas">Atlas rules</option>
+                    <option value="sigma">Sigma rules</option>
+                  </select>
+                  <button id="btn-detect" type="button" title="Run SigmaDFT rules on every log line">Run</button>
+                </div>
+              </li>
+              <li id="step-reconstruct" class="step">
+                <h3><span class="step-mark" aria-hidden="true">2</span>Event reconstruction</h3>
+                <p id="reconstruct-status" class="step-status"></p>
+                <div class="step-row">
+                  <button id="btn-reconstruct" type="button" title="Group adjacent detected events of the same type into high-level events">Build high-level events</button>
+                </div>
+              </li>
+            </ol>
+            <div class="export">
+              <h3>Export</h3>
+              <p id="export-status" class="step-status"></p>
+              <div class="step-row">
+                <button id="btn-export-json" type="button">JSON</button>
+                <button id="btn-export-csv" type="button">CSV</button>
+              </div>
+            </div>
+            <p id="case-error" class="hint error" role="alert" hidden></p>
+          </div>
+        </div>
+      </section>
       <section id="time-section">
         <h2><button id="btn-time" type="button" class="section-toggle" aria-expanded="true" aria-controls="time-panel"
                     title="Show or hide the time range filter"><span class="caret" aria-hidden="true"></span>Time range <span id="time-total" class="total"></span></button></h2>
@@ -160,7 +203,7 @@
   <dialog id="db-dialog" aria-labelledby="db-dialog-title">
     <form id="db-form" novalidate>
       <h2 id="db-dialog-title">Database connection</h2>
-      <p class="hint">Neo4j server used by this app. Access stays read-only, and only databases named
+      <p class="hint">Neo4j server used by this app. Browsing and queries are read-only (only New case and Analysis write), and only databases named
         <code id="db-prefix">sigmadft-*</code> are listed. A change lasts until the server restarts.</p>
       <label>URI<input id="db-uri" type="text" required autocomplete="off" spellcheck="false" placeholder="bolt://localhost:7687"></label>
       <label>Username<input id="db-user" type="text" required autocomplete="username" spellcheck="false"></label>
@@ -181,9 +224,28 @@
       <p class="hint">Each case is one database made by log2graph. You can switch later from <strong>Case</strong> in the top bar.</p>
       <fieldset id="case-list" class="case-list"><legend class="sr-only">Cases</legend></fieldset>
       <div class="dialog-actions">
+        <button id="btn-case-new" type="button">New case…</button>
         <span class="spacer"></span>
         <button id="btn-case-cancel" type="button">Cancel</button>
         <button id="btn-case-open" type="submit" class="primary">Open case</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="new-case-dialog" aria-labelledby="new-case-title">
+    <form id="new-case-form" novalidate>
+      <h2 id="new-case-title">New case</h2>
+      <p class="hint">Upload a Plaso timeline CSV (same columns as <code>sample.csv</code>). It is first mapped to a graph;
+        anomaly detection and event reconstruction are run afterwards from <strong>Analysis</strong> in the sidebar.</p>
+      <label>Timeline CSV<input id="nc-file" type="file" accept=".csv,text/csv" required></label>
+      <label>Case name<input id="nc-name" type="text" required autocomplete="off" spellcheck="false" placeholder="e.g. sample"></label>
+      <p id="nc-target" class="nc-target"></p>
+      <label class="check"><input id="nc-decode" type="checkbox" checked> Decode encoded payloads (base64, URL, hex…), as <code>sigmadft -d</code></label>
+      <p id="nc-result" class="db-result" role="status"></p>
+      <div class="dialog-actions">
+        <span class="spacer"></span>
+        <button id="btn-nc-cancel" type="button">Cancel</button>
+        <button id="btn-nc-submit" type="submit" class="primary">Upload and import</button>
       </div>
     </form>
   </dialog>

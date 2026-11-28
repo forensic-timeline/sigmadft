@@ -1,9 +1,6 @@
 # src/sigmadft/output/CSVWriter.py
 
-import csv
-import json
 from sigmadft.timelines.HighLevelTimeline import HighLevelTimeline
-from sigmadft.output.JSONWriter import JSONWriter
 
 
 class CSVWriter:
@@ -16,25 +13,8 @@ class CSVWriter:
     def write(self):
         """Writes the timeline to a CSV file (one row per high-level event).
 
-        Columns follow the JSON output fields; 'keys' is stored as a single
-        JSON string column.
+        Columns follow the JSON output fields; 'type_candidate', 'keys' (and
+        'ids' when grouped) are stored as JSON string columns.
         """
-        timeline_dict = JSONWriter(self.timeline, self.csv_path, self.grouped).to_dict()
-        fieldnames = [
-            'id', 'date_time_min', 'date_time_max', 'evidence_message',
-            'type_candidate', 'type', 'description', 'category', 'plugin',
-            'files', 'keys',
-        ]
-        if self.grouped:
-            fieldnames += ['count', 'ids']
-
-        with open(self.csv_path, 'w', newline='', encoding='utf-8') as file:
-            writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction='ignore')
-            writer.writeheader()
-            for event in timeline_dict.values():
-                row = dict(event)
-                row['type_candidate'] = json.dumps(event.get('type_candidate') or {}, ensure_ascii=False)
-                row['keys'] = json.dumps(event.get('keys') or {}, ensure_ascii=False)
-                if self.grouped:
-                    row['ids'] = json.dumps(event.get('ids') or [], ensure_ascii=False)
-                writer.writerow(row)
+        from sigmadft.pipeline import timeline_rows, write_rows_csv
+        write_rows_csv(timeline_rows(self.timeline, self.grouped), self.csv_path, self.grouped)

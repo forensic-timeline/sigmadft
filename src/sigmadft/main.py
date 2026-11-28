@@ -1,19 +1,11 @@
 # src/sigmadft/main.py
 
 import argparse
-import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
-import sigmadft.analyzers.ReadFromYamlAnalyzer as ReadFromYamlAnalyzer
-from sigmadft.reader.CSVReader import CSVReader
-from sigmadft.timelines.LowLevelTimeline import LowLevelTimeline
-from sigmadft.timelines.HighLevelTimeline import MergeHighLevelTimeline
-from sigmadft.output.JSONWriter import JSONWriter
-from sigmadft.output.CSVWriter import CSVWriter
-from sigmadft.rules.Rule import Rule
-from sigmadft.adapters import ADAPTERS, get_adapter
+
+from sigmadft import pipeline
 
 
 def format_duration(seconds):
@@ -28,7 +20,7 @@ def format_duration(seconds):
         return f"{minutes}m {remaining_seconds:.2f}s"
 
 
-# Main function
+# Main function (the steps themselves live in sigmadft/pipeline.py, shared with the web app)
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Forensic event reconstruction tool.")
@@ -54,7 +46,7 @@ def main():
         action="store",
         required=False,
         default="atlas",
-        choices=list(ADAPTERS) + ["all"],
+        choices=pipeline.RULE_SOURCES,
         help="Rule source to use: atlas (default), sigma, or all.",
     )
     parser.add_argument(
@@ -85,20 +77,10 @@ def main():
     print(f"[{start_datetime.strftime('%Y-%m-%d %H:%M:%S')}] Starting analysis...")
     print("=" * 60)
 
-    # Read the CSV file
-    csv_start_time = time.time()
-    print("Reading CSV file ...")
-    reader = CSVReader(input_path)
-    csv_end_time = time.time()
-    print(
-        f"  ✓ CSV reading completed in {format_duration(csv_end_time - csv_start_time)}"
-    )
-
-    # Create a list of LowLevelEvent objects
+    # Read the CSV file and create the low-level timeline
     timeline_start_time = time.time()
     print("Creating low-level timeline ...")
-    low_timeline = LowLevelTimeline()
-    low_timeline.create_timeline(reader, decode=args.decode)
+    low_timeline = pipeline.build_low_timeline(input_path, decode=args.decode)
     timeline_end_time = time.time()
     print(
         f"  ✓ Low-level timeline created with {len(low_timeline.events)} events in {format_duration(timeline_end_time - timeline_start_time)}"
@@ -106,86 +88,28 @@ def main():
     if args.decode:
         print(f"  ✓ Decoded payloads appended to {low_timeline.decoded_count} messages")
 
-    # Create a list of high-level timeline
-    high_timelines = []
-
-    # Auto-discover all YAML rules of the selected source(s) via adapters
-    rules_dir = os.path.join(os.path.dirname(__file__), "rules")
-    sources = list(ADAPTERS) if rule_source == "all" else [rule_source]
-    rules = []
-    for source in sources:
-        adapter = get_adapter(source)
-        rules.extend((adapter, path) for path in adapter.discover())
-    print(f"Running analysis with rule source '{rule_source}' ({len(rules)} rules)")
-
-    # Read the YAML rules (converted to SigmaDFT Rule objects by the adapter)
+    # Read the YAML rules of the selected source(s) (converted to Rule objects by the adapters)
     rules_start_time = time.time()
-    print("Loading YAML rules ...")
-    yaml_contents: List[Rule] = []
-    for adapter, yaml_file_path in rules:
-        display_path = os.path.relpath(yaml_file_path, rules_dir)
-
-        # Check if rule file exists
-        if not os.path.exists(yaml_file_path):
-            print(f"Warning: Rule file not found: {yaml_file_path}")
-            continue
-
-        try:
-            yaml_content = adapter.load(yaml_file_path)
-            yaml_content.rule_file = display_path.replace(os.sep, "/")
-            yaml_contents.append(yaml_content)
-            print(f"  ✓ Loaded rule [{adapter.name}]: {display_path}")
-        except Exception as e:
-            print(f"  ✗ Error loading rule [{adapter.name}] {display_path}: {str(e)}")
-            continue
-
+    rules = pipeline.load_rules(rule_source, log=print)
     rules_end_time = time.time()
     print(
-        f"  ✓ Loaded {len(yaml_contents)} rules in {format_duration(rules_end_time - rules_start_time)}"
+        f"  ✓ Loaded {len(rules)} rules in {format_duration(rules_end_time - rules_start_time)}"
     )
 
-    if not yaml_contents:
+    if not rules:
         print("Error: No valid rules could be loaded. Exiting.")
         return
 
-    # Run each rules with the analyzer
+    # Anomaly detection: run each rule, merge to one event per log line
     analysis_start_time = time.time()
-    print(f"Running {len(yaml_contents)} rules against the timeline...")
-    total_events_found = 0
-
-    for i, yaml_content in enumerate(yaml_contents, 1):
-        rule_start_time = time.time()
-        print(f"[{i}/{len(yaml_contents)}] Processing rule: {yaml_content.title} ...")
-
-        try:
-            high_timeline = ReadFromYamlAnalyzer.Run(low_timeline, yaml_content)
-            rule_end_time = time.time()
-
-            if high_timeline and len(high_timeline.events) > 0:
-                high_timelines.append(high_timeline)
-                events_count = len(high_timeline.events)
-                total_events_found += events_count
-                print(
-                    f"  ✓ Found {events_count} events in {format_duration(rule_end_time - rule_start_time)}"
-                )
-            else:
-                print(
-                    f"  ○ No events found in {format_duration(rule_end_time - rule_start_time)}"
-                )
-        except Exception as e:
-            rule_end_time = time.time()
-            print(
-                f"  ✗ Error processing rule in {format_duration(rule_end_time - rule_start_time)}: {str(e)}"
-            )
-            continue
-
+    print(f"Running {len(rules)} rules against the timeline...")
+    merged_high_timelines = pipeline.detect(low_timeline, rules, log=print)
     analysis_end_time = time.time()
     print(
-        f"  ✓ Rule analysis completed in {format_duration(analysis_end_time - analysis_start_time)}"
+        f"  ✓ Rule analysis and merging completed in {format_duration(analysis_end_time - analysis_start_time)}"
     )
-    print(f"  ✓ Total events found: {total_events_found}")
 
-    if not high_timelines:
+    if merged_high_timelines is None:
         print("No events were detected by any rules.")
         total_end_time = time.time()
         print(
@@ -193,32 +117,20 @@ def main():
         )
         return
 
-    # Merge the high-level timelines
-    merge_start_time = time.time()
-    print("Merging high-level timelines ...")
-    merge_timelines = MergeHighLevelTimeline(high_timelines)
-    merged_high_timelines = merge_timelines.merge()
-    merge_end_time = time.time()
-    print(
-        f"  ✓ Timeline merging completed in {format_duration(merge_end_time - merge_start_time)}"
-    )
-
     # Write the results to a JSON or CSV file (based on output extension)
     output_start_time = time.time()
     format_label = output_format.upper()
     print(f"Writing results to {format_label} file: {output_path} ...")
     print(f"Total events in merged timeline: {len(merged_high_timelines.events)}")
-    writer_class = CSVWriter if output_format == "csv" else JSONWriter
-    writer_class(merged_high_timelines, output_path).write()
+    pipeline.write_timeline(merged_high_timelines, output_path)
 
-    # Grouped version (always written): adjacent events with the same type
-    # become one event (first event + ids/count), saved as <name>_grouped.<ext>
-    grouped_high_timelines = MergeHighLevelTimeline.group_consecutive_by_type(merged_high_timelines)
-    output_file = Path(output_path)
-    grouped_output_path = str(output_file.with_name(f"{output_file.stem}_grouped{output_file.suffix}"))
+    # Event reconstruction (grouped version, always written): adjacent events with
+    # the same type become one event (first event + ids/count), saved as <name>_grouped.<ext>
+    grouped_high_timelines = pipeline.reconstruct(merged_high_timelines)
+    grouped_output_path = pipeline.grouped_path(output_path)
     print(f"Writing grouped results to {format_label} file: {grouped_output_path} ...")
     print(f"Total events in grouped timeline: {len(grouped_high_timelines.events)}")
-    writer_class(grouped_high_timelines, grouped_output_path, grouped=True).write()
+    pipeline.write_timeline(grouped_high_timelines, grouped_output_path, grouped=True)
     output_end_time = time.time()
     print(
         f"  ✓ {format_label} output completed in {format_duration(output_end_time - output_start_time)}"
@@ -236,7 +148,7 @@ def main():
     print(f"End time:            {end_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Total duration:      {format_duration(total_duration)}")
     print(f"Input events:        {len(low_timeline.events):,}")
-    print(f"Rules processed:     {len(yaml_contents)}")
+    print(f"Rules processed:     {len(rules)}")
     print(f"Output events:       {len(merged_high_timelines.events):,}")
     print(
         f"Processing rate:     {len(low_timeline.events) / total_duration:.0f} events/second"

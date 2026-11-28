@@ -114,6 +114,14 @@ function setStatus(text, isError = false) {
 // Loading indicator: Query -> Download -> Build -> Layout, then "Ready"
 // ---------------------------------------------------------------------------
 const loader = { t0: 0, clock: null, hideTimer: null, loading: false };
+const LOAD_STEPS = ["Query", "Download", "Build", "Layout"];
+
+// Names of the steps in the loader (case load, or the steps of a job)
+function setLoaderSteps(names) {
+  const list = $("loader-steps");
+  if ([...list.children].map((li) => li.textContent).join("|") === names.join("|")) return;
+  list.replaceChildren(...names.map((n) => el("li", "", n)));
+}
 
 function loaderTick() {
   $("loader-time").textContent = `${((performance.now() - loader.t0) / 1000).toFixed(1)} s`;
@@ -141,7 +149,7 @@ function showLoader(step, text, progress = null) {
     li.classList.toggle("current", i === step);
   });
   // The old graph stays visible but dimmed while new data is on its way
-  $("stage").classList.toggle("busy", step !== null && step < 3);
+  $("stage").classList.toggle("busy", loader.loading && step !== null && step < 3);
   loaderTick();
 }
 
@@ -1318,7 +1326,7 @@ function backToFull() {
 // ---------------------------------------------------------------------------
 // Loading
 // ---------------------------------------------------------------------------
-async function loadDatabases() {
+async function loadDatabases({ pick = true } = {}) {
   const sel = $("db-select");
   let dbs;
   try {
@@ -1330,9 +1338,10 @@ async function loadDatabases() {
   const placeholder = Object.assign(document.createElement("option"), { value: "", textContent: "Choose a case…", disabled: true });
   sel.replaceChildren(placeholder, ...dbs.map((d) => Object.assign(document.createElement("option"), { value: d, textContent: d })));
   sel.value = state.db && dbs.includes(state.db) ? state.db : "";
-  if (dbs.length === 0) { setStatus(`No '${state.dbPrefix}*' database found`, true); return; }
+  if (dbs.length === 0) setStatus(`No '${state.dbPrefix}*' database yet. Make one with New case.`);
   // No case is loaded until the user picks one (a large case takes a while to load)
-  openCasePicker(dbs);
+  if (pick) openCasePicker(dbs);
+  return dbs;
 }
 
 // ---------------------------------------------------------------------------
@@ -1342,6 +1351,13 @@ function openCasePicker(dbs) {
   const saved = localStorage.getItem("graph2web.db");
   const chosen = dbs.includes(state.db) ? state.db : dbs.includes(saved) ? saved : dbs[0];
   const list = $("case-list");
+  $("btn-case-open").disabled = dbs.length === 0;
+  if (dbs.length === 0) {
+    list.replaceChildren(list.querySelector("legend"), el("p", "empty", "No case yet. Upload a Plaso timeline CSV with New case."));
+    $("case-dialog").showModal();
+    $("btn-case-new").focus();
+    return;
+  }
   list.replaceChildren(list.querySelector("legend"), ...dbs.map((db) => {
     const label = el("label");
     const radio = Object.assign(document.createElement("input"), { type: "radio", name: "case", value: db, checked: db === chosen });
@@ -1372,6 +1388,7 @@ function bindCasePicker() {
     loadGraph();
   });
   $("btn-case-cancel").addEventListener("click", () => dialog.close());
+  $("btn-case-new").addEventListener("click", () => { dialog.close(); openNewCase(); });
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
   dialog.addEventListener("close", () => {
     if (!state.db) setStatus("No case open. Choose one from Case in the top bar.");
@@ -1472,7 +1489,9 @@ async function loadGraph() {
   const abort = state.loadAbort = new AbortController();
   stopLayout();
   loader.loading = true;
+  setLoaderSteps(LOAD_STEPS);
   showLoader(0, `Querying ${state.db}…`);
+  loadCaseInfo();
   await document.fonts.ready;
   const t0 = performance.now();
   try {
@@ -1521,6 +1540,298 @@ async function fetchGraph(db, signal) {
   showLoader(2, "Reading data…");
   await nextPaint();
   return JSON.parse(await new Blob(chunks).text());
+}
+
+// ---------------------------------------------------------------------------
+// Case pipeline: New case (upload -> graph), Analysis (anomaly detection ->
+// event reconstruction) and Export. Each step is a background job on the
+// server; the loader shows its steps and progress.
+// ---------------------------------------------------------------------------
+const PLASO_HEADER = "datetime,timestamp_desc,source,source_long,message,parser,display_name,tag";
+const JOB_NAMES = { import: "Import", detect: "Anomaly detection", reconstruct: "Event reconstruction" };
+const RULE_NAMES = { all: "all rules", atlas: "atlas rules", sigma: "Sigma rules" };
+const STAGE_NAMES = { imported: "graph only", detected: "detected", reconstructed: "reconstructed" };
+const caseState = { info: null, loaded: false, error: "", busy: false };
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Same rule as graph2web/cases.py case_slug (file name and database name)
+function caseSlug(name) {
+  return name.trim().replace(/\.csv$/i, "").toLowerCase().replace(/[^a-z0-9.]+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "").replace(/-{2,}/g, "-").slice(0, 54).replace(/[-.]+$/, "");
+}
+
+function shortTime(iso) {
+  return iso ? `${iso.slice(0, 16).replace("T", " ").replace(/-/g, "/")} UTC` : "";
+}
+
+async function loadCaseInfo() {
+  // Keep showing the same case while it refreshes; clear only when the case changes
+  if (!caseState.info || caseState.info.name !== state.db) {
+    caseState.info = null;
+    caseState.loaded = false;
+  }
+  caseState.error = "";
+  renderCase();
+  if (!state.db) return;
+  const db = state.db;
+  try {
+    const res = await api(`/api/case?db=${encodeURIComponent(db)}`);
+    if (db !== state.db) return;
+    caseState.info = res.case;
+    caseState.loaded = true;
+    renderCase();
+    // A job that was still running when the page was (re)opened
+    if (res.job && !caseState.busy) followJob(res.job, { onDone: () => reloadAfterJob(db) });
+  } catch (err) {
+    if (db !== state.db) return;
+    caseState.error = `Case details unavailable: ${err.message}`;
+    renderCase();
+  }
+}
+
+function renderCase() {
+  const info = caseState.info;
+  const open = Boolean(state.db);
+  $("case-empty").hidden = open;
+  $("case-body").hidden = !open;
+  $("btn-new-case").disabled = caseState.busy;
+  $("analysis-total").textContent = info ? STAGE_NAMES[info.stage] || "" : "";
+  if (!open) return;
+
+  const err = $("case-error");
+  const facts = $("case-facts");
+  if (!info) {
+    facts.replaceChildren();
+    const missing = caseState.loaded && !caseState.error;
+    err.hidden = !(missing || caseState.error);
+    err.textContent = caseState.error || (missing
+      ? "This case has no analysis metadata yet. Import it again (New case, or log2graph) to analyse it here."
+      : "");
+  } else {
+    err.hidden = !caseState.error;
+    err.textContent = caseState.error;
+    const file = info.source_csv.split(/[\\/]/).pop();
+    const rows = [["File", file, info.source_csv], ["Log lines", Number(info.rows).toLocaleString()],
+      ["Decode", info.decode ? "yes" : "no"], ["Imported", shortTime(info.imported_at)]];
+    facts.replaceChildren(...rows.flatMap(([k, v, title]) => {
+      const dd = el("dd", "", v);
+      if (title) dd.title = title;
+      return [el("dt", "", k), dd];
+    }));
+  }
+
+  const stage = info ? info.stage : null;
+  const detected = stage === "detected" || stage === "reconstructed";
+  const reconstructed = stage === "reconstructed";
+  const disabled = caseState.busy || !info;
+  $("step-detect").classList.toggle("done", detected);
+  $("step-reconstruct").classList.toggle("done", reconstructed);
+  $("step-reconstruct").classList.toggle("locked", !detected);
+  if (info && info.rule_source && !caseState.busy) $("rule-source").value = info.rule_source;
+  $("rule-source").disabled = disabled;
+  $("btn-detect").disabled = disabled;
+  $("btn-detect").textContent = detected ? "Run again" : "Run";
+  $("btn-reconstruct").disabled = disabled || !detected;
+  $("btn-reconstruct").textContent = reconstructed ? "Build again" : "Build high-level events";
+  $("btn-export-json").disabled = disabled;
+  $("btn-export-csv").disabled = disabled;
+
+  $("detect-status").textContent = !info ? "" : detected
+    ? `${Number(info.detected_events).toLocaleString()} events detected with ${RULE_NAMES[info.rule_source] || "unknown rules"}, `
+      + `${shortTime(info.detected_at)}. Running again replaces this result and the high-level events.`
+    : "Not run yet. Marks the log lines matched by SigmaDFT rules.";
+  $("reconstruct-status").textContent = !info ? "" : reconstructed
+    ? `${Number(info.hle_count).toLocaleString()} high-level events, ${shortTime(info.reconstructed_at)}.`
+    : detected ? "Not run yet. Groups adjacent detected events of the same type." : "Needs anomaly detection first.";
+  $("export-status").textContent = !info ? "" : reconstructed
+    ? "High-level events, as the SigmaDFT _grouped output."
+    : detected ? "Detected events, as the SigmaDFT output."
+    : `All ${Number(info.rows).toLocaleString()} log lines; analysis fields are "-".`;
+}
+
+// Poll a job until it ends; prefix = loader steps shown before the job's own (e.g. Upload)
+async function followJob(job, { prefix = [], onDone = null } = {}) {
+  caseState.busy = true;
+  renderCase();
+  const name = JOB_NAMES[job.kind] || job.kind;
+  while (job.status === "running") {
+    setLoaderSteps([...prefix, ...job.steps]);
+    showLoader(prefix.length + job.step, `${name}: ${job.text}`, job.progress);
+    await sleep(500);
+    try {
+      job = await api(`/api/jobs/${job.id}`);
+    } catch (err) {
+      job = { ...job, status: "error", error: err.message };
+    }
+  }
+  caseState.busy = false;
+  if (job.status === "done") {
+    setLoaderSteps([...prefix, ...job.steps]);
+    finishLoader(`${name}: ${job.text}`);
+    const summary = `${job.db}: ${job.text} (${job.elapsed} s)`;
+    setStatus(summary);
+    if (onDone) await onDone(job);
+    setStatus(summary);
+  } else {
+    hideLoader();
+    caseState.error = `${name} failed: ${job.error}`;
+    setStatus(caseState.error, true);
+  }
+  renderCase();
+}
+
+// After a step: reload the graph so :Detected rings / HLE nodes show up
+async function reloadAfterJob(db) {
+  if (state.db === db) await loadGraph();
+}
+
+async function runAnalysis(kind) {
+  if (!state.db || caseState.busy) return;
+  caseState.error = "";
+  const db = state.db;
+  try {
+    const body = kind === "detect" ? JSON.stringify({ rule_source: $("rule-source").value }) : "{}";
+    const res = await api(`/api/cases/${encodeURIComponent(db)}/${kind}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body,
+    });
+    await followJob(res.job, { onDone: () => reloadAfterJob(db) });
+  } catch (err) {
+    caseState.error = `${JOB_NAMES[kind]}: ${err.message}`;
+    setStatus(caseState.error, true);
+    renderCase();
+  }
+}
+
+async function exportCase(format) {
+  if (!state.db) return;
+  try {
+    const res = await fetch(`/api/export?db=${encodeURIComponent(state.db)}&format=${format}`);
+    if (!res.ok) {
+      let detail = res.statusText;
+      try { detail = (await res.json()).detail || detail; } catch (_) { /* not JSON */ }
+      throw new Error(detail);
+    }
+    const match = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") || "");
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement("a"), { href: url, download: match ? match[1] : `${state.db}.${format}` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    setStatus(`Exported ${a.download}`);
+  } catch (err) {
+    setStatus(`Export failed: ${err.message}`, true);
+  }
+}
+
+// --- New case dialog --------------------------------------------------------
+function ncResult(text, kind = "") {
+  $("nc-result").textContent = text;
+  $("nc-result").className = `db-result ${kind}`;
+}
+
+function ncTarget() {
+  const slug = caseSlug($("nc-name").value);
+  $("nc-target").replaceChildren(...(slug
+    ? ["Database ", el("strong", "", `${state.dbPrefix}${slug}`), ", file ", el("strong", "", `dataset/uploads/${slug}.csv`)]
+    : []));
+  return slug;
+}
+
+function ncBusy(busy) {
+  ["nc-file", "nc-name", "nc-decode", "btn-nc-submit"].forEach((id) => { $(id).disabled = busy; });
+}
+
+function openNewCase() {
+  if (caseState.busy) return;
+  $("new-case-form").reset();
+  ["nc-file", "nc-name"].forEach((id) => $(id).removeAttribute("aria-invalid"));
+  ncTarget();
+  ncResult("");
+  ncBusy(false);
+  $("new-case-dialog").showModal();
+  $("nc-file").focus();
+}
+
+// The raw file is the request body (no multipart), so the upload shows real progress
+function uploadCase(file, name, decode) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/cases?name=${encodeURIComponent(name)}&decode=${decode}`);
+    xhr.setRequestHeader("Content-Type", "text/csv");
+    xhr.upload.onprogress = (e) => showLoader(0, `Uploading ${megabytes(e.loaded)}${e.lengthComputable ? ` of ${megabytes(e.total)}` : ""}`,
+      e.lengthComputable ? e.loaded / e.total : null);
+    xhr.onload = () => {
+      let body = null;
+      try { body = JSON.parse(xhr.responseText); } catch (_) { /* not JSON */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+      else reject(new Error((body && body.detail) || xhr.statusText || `HTTP ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed: the server could not be reached."));
+    xhr.send(file);
+  });
+}
+
+async function submitNewCase() {
+  const file = $("nc-file").files[0];
+  const slug = ncTarget();
+  $("nc-file").setAttribute("aria-invalid", String(!file));
+  $("nc-name").setAttribute("aria-invalid", String(!slug));
+  if (!file) { ncResult("Choose a timeline CSV file.", "error"); return; }
+  if (!slug) { ncResult("Give the case a name with at least one letter or digit.", "error"); return; }
+  // Check the header before sending a large file
+  const head = (await file.slice(0, 4096).text()).replace(/^﻿/, "").split(/\r?\n/)[0].trim();
+  if (head !== PLASO_HEADER) {
+    $("nc-file").setAttribute("aria-invalid", "true");
+    ncResult(`Not a Plaso timeline CSV. The first line must be: ${PLASO_HEADER}`, "error");
+    return;
+  }
+  ncBusy(true);
+  ncResult(`Uploading ${megabytes(file.size)}…`);
+  caseState.busy = true;
+  renderCase();
+  const prefix = ["Upload"];
+  setLoaderSteps([...prefix, "Create database", "Read log", "Write graph"]);
+  showLoader(0, "Uploading…", 0);
+  let res;
+  try {
+    res = await uploadCase(file, $("nc-name").value, $("nc-decode").checked);
+  } catch (err) {
+    caseState.busy = false;
+    hideLoader();
+    renderCase();
+    ncBusy(false);
+    ncResult(err.message, "error");
+    return;
+  }
+  $("new-case-dialog").close();
+  await followJob(res.job, {
+    prefix,
+    onDone: async () => {
+      await loadDatabases({ pick: false });
+      $("db-select").value = res.db;
+      await loadGraph();
+    },
+  });
+}
+
+function bindNewCase() {
+  $("btn-new-case").addEventListener("click", openNewCase);
+  $("nc-file").addEventListener("change", () => {
+    const file = $("nc-file").files[0];
+    $("nc-file").removeAttribute("aria-invalid");
+    if (file && !$("nc-name").value) $("nc-name").value = caseSlug(file.name);
+    ncTarget();
+    ncResult(file ? `${file.name}, ${megabytes(file.size)}` : "");
+  });
+  $("nc-name").addEventListener("input", () => { $("nc-name").removeAttribute("aria-invalid"); ncTarget(); });
+  $("new-case-form").addEventListener("submit", (e) => { e.preventDefault(); submitNewCase(); });
+  $("btn-nc-cancel").addEventListener("click", () => $("new-case-dialog").close());
+  $("new-case-dialog").addEventListener("click", (e) => { if (e.target === $("new-case-dialog")) $("new-case-dialog").close(); });
+  $("btn-detect").addEventListener("click", () => runAnalysis("detect"));
+  $("btn-reconstruct").addEventListener("click", () => runAnalysis("reconstruct"));
+  $("btn-export-json").addEventListener("click", () => exportCase("json"));
+  $("btn-export-csv").addEventListener("click", () => exportCase("csv"));
 }
 
 // ---------------------------------------------------------------------------
@@ -1587,6 +1898,8 @@ function init() {
   bindTimeControls();
   bindDbSettings();
   bindCasePicker();
+  bindNewCase();
+  renderCase();
   // Collapsible sidebar sections: each header opens/closes the panel it controls
   document.querySelectorAll("#sidebar .section-toggle").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1598,7 +1911,7 @@ function init() {
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "k" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); toggleDrawer(); return; }
-    if ($("db-dialog").open || $("case-dialog").open) return; // dialogs handle their own Esc
+    if ($("db-dialog").open || $("case-dialog").open || $("new-case-dialog").open) return; // dialogs handle their own Esc
     const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
     if (e.key === "Escape" && !typing) clearSelection();
   });

@@ -69,6 +69,28 @@ class GraphWriter:
         """Delete every node/relation of THIS database (prefix-checked)."""
         self._run("MATCH (n) CALL (n) { DETACH DELETE n } IN TRANSACTIONS OF 10000 ROWS")
 
+    # ------------------------------------------------------------------
+    # Case metadata: one :Case node per database (source file, stage, ...)
+    # ------------------------------------------------------------------
+    def get_case(self) -> Dict[str, Any]:
+        with self.driver.session(database=self.database) as session:
+            record = session.run("MATCH (c:Case) RETURN properties(c) AS p LIMIT 1").single()
+        return dict(record["p"]) if record else {}
+
+    def set_case(self, props: Dict[str, Any]) -> None:
+        """Merge props into the :Case node (a None value removes the property)."""
+        self._run("MERGE (c:Case) SET c += $props", props=props)
+
+    def clear_hle(self) -> None:
+        """Remove the high-level events (event reconstruction)."""
+        self._run("MATCH (h:HighLevelEvent) DETACH DELETE h")
+
+    def clear_detection(self) -> None:
+        """Remove SigmaDFT results: :Detected labels, sigmadft_* properties, HLEs."""
+        self.clear_hle()
+        self._run("MATCH (e:Detected) REMOVE e:Detected, e.sigmadft_type, e.sigmadft_category, "
+                  "e.sigmadft_description, e.sigmadft_type_candidate")
+
     def ensure_constraints(self) -> None:
         for label, key in NODE_KEYS.items():
             name = f"log2graph_{label.lower()}_{key}"
